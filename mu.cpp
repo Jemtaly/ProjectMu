@@ -302,13 +302,13 @@ int main(int argc, char *argv[]) {
 			rec |= REC_TXT;
 		else
 			rec |= REC_FLS;
-	if ((rec & REC_FLS) != 0 or (rec & REC_TXT) == 0) {
-		cerr << color_err << "usage: " << color_end << argv[0] << " TXT [-o WAV] [-tN]" << endl;
+	if ((rec & REC_FLS) != 0) {
+		cerr << color_err << "usage: " << color_end << argv[0] << " [NMN] [-o WAV] [-tN]" << endl;
 		return 1;
 	}
 	if ((rec & REC_WAV) == 0)
 		wav_file.open("a.wav", ios::binary);
-	Music(txt_file).save(wav_file, timbre);
+	Music((rec & REC_TXT) == 0 ? cin : txt_file).save(wav_file, timbre);
 #if defined _WIN32
 	if (bStderr)
 		color_support = SetConsoleMode(hStderr, dwStderrMode);
