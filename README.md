@@ -1,8 +1,8 @@
 # ProjectMu
 
-A tool for generating audio files in .wav format from numbered musical notations.
+ProjectMu 是一个用于通过简谱生成 .wav 格式音频文件的工具。
 
-一个通过简谱生成 .wav 格式音频文件的工具。
+ProjectMu is a tool for generating audio files in .wav format from numbered musical notations.
 
 ## 使用方法
 
