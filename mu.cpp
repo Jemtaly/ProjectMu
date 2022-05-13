@@ -47,30 +47,31 @@ struct Tone {
 	Tone(double const &f) : frequency(f), duration(0) {}
 	vector<BITS_T> wave(char const &timbre) const {
 		int size = duration * WAV_SR;
+		int period = WAV_SR / frequency;
 		vector<BITS_T> wave(size, BITS_M);
-		if (frequency) {
-			int period = WAV_SR / frequency;
-			for (int i = 0; i < size; i++) {
-				double weight = min(min(i, size - i) / (0.02 * WAV_SR), 1.0);
-				switch (timbre) {
-				case '1':
-					wave[i] += (i % period < period / 2 ? -BITS_M : BITS_M) * weight;
-					break;
-				case '2':
-					wave[i] += BITS_M * (abs(i % period * 4 - period * 2) - period) / period * weight;
-					break;
-				case '3':
-					wave[i] += BITS_M * (i % period * 2 - period) / period * weight;
-					break;
-				case '4':
-					wave[i] += BITS_M * (sin(TAU / WAV_SR * frequency * i) * 0.6 - sin(TAU / WAV_SR * (frequency + 5) * i) * 0.4) * weight;
-					break;
-				default:
-					wave[i] += BITS_M * sin(TAU / WAV_SR * frequency * i) * weight;
-					break;
-				}
+		if (frequency)
+			switch (timbre) {
+			case '1':
+				for (int i = 0; i < size; i++)
+					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * (i % period < period / 2 ? -BITS_M : BITS_M);
+				break;
+			case '2':
+				for (int i = 0; i < size; i++)
+					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (abs(i % period * 4 - period * 2) - period) / period;
+				break;
+			case '3':
+				for (int i = 0; i < size; i++)
+					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (i % period * 2 - period) / period;
+				break;
+			case '4':
+				for (int i = 0; i < size; i++)
+					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (sin(TAU / WAV_SR * frequency * i) * 0.6 - sin(TAU / WAV_SR * (frequency + 5) * i) * 0.4);
+				break;
+			default:
+				for (int i = 0; i < size; i++)
+					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * sin(TAU / WAV_SR * frequency * i);
+				break;
 			}
-		}
 		return wave;
 	}
 };
