@@ -20,7 +20,7 @@
 #define BITS_M 127
 #define WAV_SR 44100
 using namespace std;
-static std::string color_log, color_warn, color_err, color_end;
+static string color_log, color_warn, color_err, color_end;
 struct WavHead {
 	char riff_ID[4] = {'R', 'I', 'F', 'F'};
 	uint32_t riff_size;
@@ -76,7 +76,8 @@ struct Tone {
 	}
 };
 class Passage {
-	int reference;
+	static constexpr int pitch[7] = {0, 2, 4, 5, 7, 9, 11};
+	string const mode;
 	int const metre[2];
 	int const bpm;
 	struct Note {
@@ -85,45 +86,19 @@ class Passage {
 		Note(int const &n, int const &a, Rational const &l) : solfa(n), accidental(a), octave(0), value(l) {}
 	};
 	vector<Note> notes;
-	struct Irreg {
+	struct Warn {
 		int measure;
 		Rational mval;
-		Irreg(int const &m, Rational const &v) : measure(m), mval(v) {}
+		Warn(int const &m, Rational const &v) : measure(m), mval(v) {}
 	};
-	vector<Irreg> irregs;
-	bool closed;
-	Rational crotchet;
-	stack<Rational> tuplets;
-	int persist[7];
-	static int const pitch[7];
+	vector<Warn> warns;
 public:
-	Passage(string const &mode, int const (&m)[2], int const &b) : bpm(b), metre{m[0], m[1]}, reference(3), closed(false), crotchet(1, 4), persist{} {
-		for (bool t = false; char const &c : mode)
-			if (t)
-				switch (c) {
-				case '#':
-					reference++;
-					break;
-				case 'b':
-					reference--;
-					break;
-				case '^':
-					reference += 12;
-					break;
-				case 'v':
-					reference -= 12;
-					break;
-				}
-			else if (c >= 'A' && c <= 'G')
-				t = true, reference = (pitch[(c - 'C' + 7) % 7] + 3) % 12;
-			else if (c >= 'a' && c <= 'g')
-				t = true, reference = (pitch[(c - 'c' + 7) % 7] + 3) % 12 + 3;
-	}
-	int read(istream &input) {
-		if (closed)
-			return 1;
-		for (int measure = 0, mcount = 0;;)
-			if (int c = input.get(); c >= '1' && c <= '7')
+	Passage(string const &md, int const (&mt)[2], int const &tm, istream &input) : mode(md), metre{mt[0], mt[1]}, bpm(tm) {
+		int persist[7] = {};
+		Rational crotchet(1, 4);
+		stack<Rational> tuplets;
+		for (int measure = 0, mcount = 0, c; (c = input.get()) != EOF;)
+			if (c >= '1' && c <= '7')
 				notes.emplace_back(c - '0', persist[c - '1'], crotchet);
 			else if (c == '0')
 				notes.emplace_back(0, 0, crotchet);
@@ -184,30 +159,42 @@ public:
 					for (; mcount < notes.size(); mcount++)
 						mvalue += notes[mcount].value;
 					if (mvalue != Rational(metre[0], metre[1]))
-						irregs.emplace_back(measure, mvalue);
+						warns.emplace_back(measure, mvalue);
 					switch (input.peek()) {
 					case '&':
 					case ':':
 					case '|':
-						closed = true;
-						return 0;
+						return;
 					}
-					break;
 				}
-				case EOF:
-					return EOF;
 				}
-	}
-	int size() {
-		return notes.size();
 	}
 	void show() const {
-		for (auto const &irreg : irregs)
-			cerr << color_warn << "warning: " << color_end << "the " << ordinal(irreg.measure) << " measure is irregular. (" << to_string(irreg.mval.numerator()) << "/" << to_string(irreg.mval.denominator()) << ")" << endl;
-		if (not closed)
-			cerr << color_warn << "warning: " << color_end << "the passage is unclosed." << endl;
+		cerr << color_log << "info: " << color_end << "mode = " << mode << ", metre = " << metre[0] << "/" << metre[1] << ", speed = " << bpm << " bpm, notes = " << notes.size() << "." << endl;
+		for (auto const &warn : warns)
+			cerr << color_warn << "warning: " << color_end << "the " << ordinal(warn.measure) << " measure is irregular. (" << to_string(warn.mval.numerator()) << "/" << to_string(warn.mval.denominator()) << ")" << endl;
 	}
 	vector<Tone> get() const {
+		int reference = 3;
+		if (mode[0] >= 'A' && mode[0] <= 'G')
+			reference = (pitch[(mode[0] - 'C' + 7) % 7] + 3) % 12;
+		else if (mode[0] >= 'a' && mode[0] <= 'g')
+			reference = (pitch[(mode[0] - 'c' + 7) % 7] + 3) % 12 + 3;
+		for (auto const &c : mode.substr(1))
+			switch (c) {
+			case '#':
+				reference++;
+				break;
+			case 'b':
+				reference--;
+				break;
+			case '^':
+				reference += 12;
+				break;
+			case 'v':
+				reference -= 12;
+				break;
+			}
 		vector<Tone> tones;
 		for (auto const &note : notes) {
 			if (note.solfa != -1)
@@ -217,35 +204,34 @@ public:
 		return tones;
 	}
 };
-int const Passage::pitch[7] = {0, 2, 4, 5, 7, 9, 11};
 class Music {
 	vector<Passage> passages;
 	vector<int> order;
 public:
 	Music(istream &input) {
+		char end;
 		string mode = "C";
 		int metre[2] = {4, 4};
 		int bpm = 88;
-		passages.emplace_back(mode, metre, bpm);
-		char end;
-		for (end = '&'; end == '&'; end = input.get()) {
+		do {
 			if (string temp; input >> temp, temp != "~")
 				mode = temp, input >> metre[0] >> end >> metre[1] >> bpm;
-			passages.emplace_back(mode, metre, bpm);
-			passages.back().read(input);
-			cerr << color_log << "passage " << passages.size() - 1 << ": " << color_end << "mode = " << mode << ", metre = " << metre[0] << "/" << metre[1] << ", speed = " << bpm << " bpm, notes = " << passages.back().size() << "." << endl;
-			passages.back().show();
-		}
+			passages.emplace_back(mode, metre, bpm, input);
+		} while ((end = input.get()) == '&');
 		if (end == ':')
 			for (int i; input >> i;)
-				order.push_back(i);
+				order.push_back(i - 1);
 		else
-			for (int i = 1; i < passages.size(); i++)
+			for (int i = 0; i < passages.size(); i++)
 				order.push_back(i);
+	}
+	void show() const {
+		for (auto const &passage : passages)
+			passage.show();
 		cerr << color_log << "order: " << color_end;
 		for (int i = 0; i < order.size() - 1; i++)
-			cerr << order[i] << ", ";
-		cerr << order.back() << "." << endl;
+			cerr << order[i] + 1 << ", ";
+		cerr << order.back() + 1 << "." << endl;
 	}
 	void save(ofstream &wav_file, char const &timbre) const {
 		vector<Tone> tones;
@@ -309,7 +295,9 @@ int main(int argc, char *argv[]) {
 	}
 	if ((rec & REC_WAV) == 0)
 		wav_file.open("a.wav", ios::binary);
-	Music((rec & REC_TXT) == 0 ? cin : txt_file).save(wav_file, timbre);
+	Music mu((rec & REC_TXT) == 0 ? cin : txt_file);
+	mu.show();
+	mu.save(wav_file, timbre);
 #if defined _WIN32
 	if (bStderr)
 		color_support = SetConsoleMode(hStderr, dwStderrMode);
