@@ -214,7 +214,7 @@ public:
 		int metre[2] = {4, 4};
 		int bpm = 88;
 		do {
-			if (string temp; input >> temp, temp != "~")
+			if (string temp; input >> temp, temp.size() && temp != "~")
 				mode = temp, input >> metre[0] >> end >> metre[1] >> bpm;
 			passages.emplace_back(mode, metre, bpm, input);
 		} while ((end = input.get()) == '&');
