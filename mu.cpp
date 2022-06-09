@@ -302,4 +302,5 @@ int main(int argc, char *argv[]) {
 	if (bStderr)
 		color_support = SetConsoleMode(hStderr, dwStderrMode);
 #endif
+	return 0;
 }
