@@ -49,7 +49,7 @@ struct Tone {
 		frequency(f), duration(0) {}
 	vector<BITS_T> wave(char const &timbre) const {
 		int size = duration * WAV_SR;
-		int period = WAV_SR / frequency;
+		int period = round(WAV_SR / frequency);
 		vector<BITS_T> wave(size, BITS_M);
 		if (frequency) {
 			switch (timbre) {
@@ -196,7 +196,7 @@ public:
 			cerr << color_warn << "warning: " << color_end << "the " << ordinal(warn.measure) << " measure is irregular. (" << to_string(warn.mval.numerator()) << "/" << to_string(warn.mval.denominator()) << ")" << endl;
 		}
 	}
-	vector<Tone> get() const {
+	vector<Tone> expo() const {
 		int reference = 3;
 		if (mode[0] >= 'A' && mode[0] <= 'G') {
 			reference = (pitch[(mode[0] - 'C' + 7) % 7] + 3) % 12;
@@ -268,7 +268,7 @@ public:
 	void save(ofstream &wav_file, char const &timbre) const {
 		vector<Tone> tones;
 		for (auto const &i : order) {
-			auto passage_tones = passages[i].get();
+			auto passage_tones = passages[i].expo();
 			tones.insert(tones.end(), passage_tones.begin(), passage_tones.end());
 		}
 		vector<BITS_T> data;
