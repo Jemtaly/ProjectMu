@@ -6,7 +6,9 @@ ProjectMu is a tool for generating audio files in .wav format from numbered musi
 
 ## 使用方法
 
-`mu [NMNFILE] [-o WAVFILE] [-tN]`
+```
+mu [NMNFILE] [-o WAVFILE] [-tN]
+```
 
 | 参数 | 作用 |
 | --- | --- |
@@ -16,7 +18,9 @@ ProjectMu is a tool for generating audio files in .wav format from numbered musi
 
 示例:
 
-`mu 'example/Bad Apple!!.nmn' -o 'Bad Apple!!.wav' -t1`
+```
+mu 'example/Bad Apple!!.nmn' -o 'Bad Apple!!.wav' -t1
+```
 
 ## NMN 文件格式
 
