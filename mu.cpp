@@ -12,7 +12,7 @@
 #include <unistd.h>
 #endif
 #define TAU 6.28318530718
-#define REC_FLS 1
+#define REC_ERR 1
 #define REC_TXT 2
 #define REC_WAV 4
 #define REC_TIM 8
@@ -295,7 +295,7 @@ int main(int argc, char *argv[]) {
 	color_support = isatty(fileno(stderr));
 #endif
 	if (color_support) {
-		color_log = "\033[32m";
+		color_log = "\033[36m";
 		color_warn = "\033[33m";
 		color_err = "\033[31m";
 		color_end = "\033[0m";
@@ -304,31 +304,31 @@ int main(int argc, char *argv[]) {
 	ifstream txt_file;
 	ofstream wav_file;
 	char timbre = '0';
-	for (int i = 1; (rec & REC_FLS) == 0 && i < argc; i++) {
+	for (int i = 1; (rec & REC_ERR) == 0 && i < argc; i++) {
 		if (argv[i][0] == '-') {
 			if (argv[i][1] == 't') {
 				if ((rec & REC_TIM) == 0 && ((timbre = argv[i][2]) | 7) == '7' && argv[i][3] == '\0') {
 					rec |= REC_TIM;
 				} else {
-					rec |= REC_FLS;
+					rec |= REC_ERR;
 				}
 			} else if (argv[i][1] == 'o' && argv[i][2] == '\0') {
 				if ((rec & REC_WAV) == 0 && i + 1 < argc && (wav_file.open(argv[++i], ios::binary), wav_file.is_open())) {
 					rec |= REC_WAV;
 				} else {
-					rec |= REC_FLS;
+					rec |= REC_ERR;
 				}
 			} else {
-				rec |= REC_FLS;
+				rec |= REC_ERR;
 			}
 		} else if ((rec & REC_TXT) == 0 && (txt_file.open(argv[i]), txt_file.is_open())) {
 			rec |= REC_TXT;
 		} else {
-			rec |= REC_FLS;
+			rec |= REC_ERR;
 		}
 	}
-	if ((rec & REC_FLS) != 0) {
-		cerr << color_err << "usage: " << color_end << argv[0] << " [NMN] [-o WAV] [-tN]" << endl;
+	if ((rec & REC_ERR) != 0) {
+		cerr << color_err << "usage: " << color_end << argv[0] << " [INFILE.NMN] [-o OUTFILE.WAV] [-t0~7]" << endl;
 		return 1;
 	}
 	if ((rec & REC_WAV) == 0) {
