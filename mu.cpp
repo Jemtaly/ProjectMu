@@ -6,8 +6,7 @@
 #include <vector>
 #include "rational.hpp"
 #if defined _WIN32
-#include <io.h>
-#include <windows.h>
+#include <Windows.h>
 #elif defined __unix__
 #include <unistd.h>
 #endif
@@ -288,9 +287,7 @@ int main(int argc, char *argv[]) {
 	HANDLE hStderr = GetStdHandle(STD_ERROR_HANDLE);
 	DWORD dwStderrMode;
 	BOOL bStderr = GetConsoleMode(hStderr, &dwStderrMode);
-	if (bStderr) {
-		color_support = SetConsoleMode(hStderr, dwStderrMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-	}
+	color_support = bStderr && SetConsoleMode(hStderr, dwStderrMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 #elif defined __unix__
 	color_support = isatty(fileno(stderr));
 #endif
@@ -338,9 +335,7 @@ int main(int argc, char *argv[]) {
 	mu.show();
 	mu.save(wav_file, timbre);
 #if defined _WIN32
-	if (bStderr) {
-		color_support = SetConsoleMode(hStderr, dwStderrMode);
-	}
+	color_support = bStderr && SetConsoleMode(hStderr, dwStderrMode);
 #endif
 	return 0;
 }
