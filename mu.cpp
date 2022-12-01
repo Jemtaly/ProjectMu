@@ -48,36 +48,16 @@ struct Tone {
 		frequency(f), duration(0) {}
 	vector<BITS_T> wave(char const &timbre) const {
 		int size = duration * WAV_SR;
-		int period = round(WAV_SR / frequency);
+		int period = WAV_SR / frequency;
 		vector<BITS_T> wave(size, BITS_M);
-		if (frequency) {
-			switch (timbre) {
-			case '1':
-				for (int i = 0; i < size; i++) {
-					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * (i % period < period / 2 ? -BITS_M : BITS_M);
-				}
-				break;
-			case '2':
-				for (int i = 0; i < size; i++) {
-					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (abs(i % period * 4 - period * 2) - period) / period;
-				}
-				break;
-			case '3':
-				for (int i = 0; i < size; i++) {
-					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (i % period * 2 - period) / period;
-				}
-				break;
-			case '4':
-				for (int i = 0; i < size; i++) {
-					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (sin(TAU / WAV_SR * frequency * i) * 0.6 - sin(TAU / WAV_SR * (frequency + 5) * i) * 0.4);
-				}
-				break;
-			default:
-				for (int i = 0; i < size; i++) {
-					wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * sin(TAU / WAV_SR * frequency * i);
-				}
-				break;
-			}
+		for (int i = 0; i < size; i++) {
+			wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (
+				not frequency ? 0.0 :
+				timbre == '1' ? i % period < period / 2 ? -1.0 : 1.0 : // square
+				timbre == '2' ? (double)(abs(i % period * 4 - period * 2) - period) / period : // triangle
+				timbre == '3' ? (double)(abs(i % period * 2 - period * 0) - period) / period : // sawtooth
+				timbre == '4' ? sin(TAU / WAV_SR * frequency * i) * 0.6 - sin(TAU / WAV_SR * (frequency + 5) * i) * 0.4 : // beat
+				                sin(TAU / WAV_SR * frequency * i) * 1.0 - sin(TAU / WAV_SR * (frequency + 5) * i) * 0.0); // sine
 		}
 		return wave;
 	}
@@ -107,7 +87,7 @@ public:
 		int persist[7] = {};
 		Rational crotchet(1, 4);
 		stack<Rational> tuplets;
-		for (int measure = 0, mcount = 0, c; (c = input.get()) != EOF;) {
+		for (int measure = 0, mcount = 0, c, p; (c = input.get()) != EOF;) {
 			if (c >= '1' && c <= '7') {
 				notes.emplace_back(c - '0', persist[c - '1'], crotchet);
 			} else if (c == '0') {
@@ -152,8 +132,7 @@ public:
 				case '>':
 					crotchet *= 2;
 					break;
-				case '[': {
-					int p;
+				case '[':
 					input >> p;
 					tuplets.emplace(p);
 					while (tuplets.top() / 2 > 1) {
@@ -161,7 +140,6 @@ public:
 					}
 					crotchet /= tuplets.top();
 					break;
-				}
 				case ']':
 					crotchet *= tuplets.top();
 					tuplets.pop();
@@ -189,13 +167,13 @@ public:
 			}
 		}
 	}
-	void show() const {
+	void show_info() const {
 		cerr << color_log << "info: " << color_end << "mode = " << mode << ", metre = " << metre[0] << "/" << metre[1] << ", speed = " << bpm << " bpm, notes = " << notes.size() << "." << endl;
 		for (auto const &warn : warns) {
 			cerr << color_warn << "warning: " << color_end << "the " << ordinal(warn.measure) << " measure is irregular. (" << to_string(warn.mval.numerator()) << "/" << to_string(warn.mval.denominator()) << ")" << endl;
 		}
 	}
-	vector<Tone> expo() const {
+	vector<Tone> get_tones() const {
 		int reference = 3;
 		if (mode[0] >= 'A' && mode[0] <= 'G') {
 			reference = (pitch[(mode[0] - 'C' + 7) % 7] + 3) % 12;
@@ -254,9 +232,9 @@ public:
 			}
 		}
 	}
-	void show() const {
+	void mshow() const {
 		for (auto const &passage : passages) {
-			passage.show();
+			passage.show_info();
 		}
 		cerr << color_log << "order: " << color_end;
 		for (int i = 0; i < order.size() - 1; i++) {
@@ -264,10 +242,10 @@ public:
 		}
 		cerr << order.back() + 1 << "." << endl;
 	}
-	void save(ofstream &wav_file, char const &timbre) const {
+	void msave(ofstream &wav_file, char const &timbre) const {
 		vector<Tone> tones;
-		for (auto const &i : order) {
-			auto passage_tones = passages[i].expo();
+		for (auto const &iter : order) {
+			auto passage_tones = passages[iter].get_tones();
 			tones.insert(tones.end(), passage_tones.begin(), passage_tones.end());
 		}
 		vector<BITS_T> data;
@@ -324,16 +302,13 @@ int main(int argc, char *argv[]) {
 			rec |= REC_ERR;
 		}
 	}
-	if ((rec & REC_ERR) != 0) {
-		cerr << color_err << "usage: " << color_end << argv[0] << " [INFILE.NMN] [-o OUTFILE.WAV] [-t0~7]" << endl;
+	if ((rec & REC_ERR) != 0 || (rec & REC_TXT) == 0 || (rec & REC_WAV) == 0 && not(wav_file.open("a.wav", ios::binary), wav_file.is_open())) {
+		cerr << color_err << "usage: " << color_end << argv[0] << " [INFILE.NMN] [-o OUTFILE.WAV] [-t<n>]" << endl;
 		return 1;
 	}
-	if ((rec & REC_WAV) == 0) {
-		wav_file.open("a.wav", ios::binary);
-	}
-	Music mu((rec & REC_TXT) == 0 ? cin : txt_file);
-	mu.show();
-	mu.save(wav_file, timbre);
+	Music mu(txt_file);
+	mu.mshow();
+	mu.msave(wav_file, timbre);
 #if defined _WIN32
 	color_support = bStderr && SetConsoleMode(hStderr, dwStderrMode);
 #endif
