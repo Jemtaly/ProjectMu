@@ -1,7 +1,4 @@
 #pragma once
-#include <algorithm>
-#include <string>
-#include <vector>
 class Rational {
 private:
 	int n;

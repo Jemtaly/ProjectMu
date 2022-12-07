@@ -47,7 +47,7 @@ struct Tone {
 		int peri = WAV_SR / freq;
 		std::vector<BITS_T> wave(size, BITS_M);
 		for (int i = 0; i < size; i++) {
-			wave[i] += min(1.0, min(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (
+			wave[i] += fmin(1.0, fmin(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (
 			    not freq ? 0.0 :
 			    t == '1' ? i % peri < peri / 2 ? -1.0 : 1.0 : // square
 			    t == '2' ? (double)(abs(i % peri * 4 - peri * 2) - peri) / peri : // triangle
