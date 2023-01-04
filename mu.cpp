@@ -206,13 +206,13 @@ public:
 		int metr[2] = {4, 4};
 		int bpm = 88;
 		char endchar;
-		do {
+		for (endchar = '&'; endchar == '&'; endchar = input.get()) {
 			if (std::string temp; input >> temp, temp.size() && temp != "~") {
 				mode = temp;
 				input >> metr[0] >> endchar >> metr[1] >> bpm;
 			}
 			passages.emplace_back(mode, metr, bpm, input);
-		} while (endchar = input.get(), endchar == '&');
+		};
 		if (endchar == ':') {
 			for (int i; input >> i;) {
 				order.push_back(i - 1);
@@ -244,10 +244,11 @@ public:
 			auto tone_data = tone.wave(timbre);
 			data.insert(data.end(), tone_data.begin(), tone_data.end());
 		}
-		int sizeof_data = data.size() * sizeof(BITS_T);
-		WavHead head(sizeof_data);
-		wav_file.write((char *)&head, sizeof head);
-		wav_file.write((char *)&data[0], sizeof_data);
+		int _size = data.size() * sizeof(BITS_T);
+		WavHead *head = new WavHead(_size);
+		wav_file.write((char *)head, sizeof *head);
+		wav_file.write((char *)data.data(), _size);
+		delete head;
 	}
 };
 int main(int argc, char *argv[]) {
