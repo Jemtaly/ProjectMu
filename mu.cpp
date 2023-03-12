@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stack>
 #include <string>
+#include <utility>
 #include <vector>
 #include "rational.hpp"
 #if defined _WIN32
@@ -35,14 +36,14 @@ struct WavHead {
 	} fmat = {1, 1, WAV_SR, WAV_SR * sizeof(BITS_T), sizeof(BITS_T), 8 * sizeof(BITS_T)};
 	char data_ID[4] = {'d', 'a', 't', 'a'};
 	uint32_t data_size;
-	WavHead(uint32_t const &ds):
+	WavHead(uint32_t ds):
 		data_size(ds),
 		fmat_size(sizeof fmat),
 		riff_size(sizeof wave_ID + sizeof fmat_ID + sizeof fmat_size + sizeof fmat + sizeof data_ID + sizeof data_size + ds) {}
 };
 struct Tone {
 	double freq, dura = 0;
-	std::vector<BITS_T> wave(char const &t) const {
+	std::vector<BITS_T> wave(char t) const {
 		int size = dura * WAV_SR;
 		int peri = WAV_SR / freq;
 		std::vector<BITS_T> wave(size, BITS_M);
@@ -70,11 +71,11 @@ class Passage {
 	std::vector<Note> notes;
 	std::vector<Warn> warns;
 	std::string const mode;
-	int const metr[2];
+	std::pair<int, int> const metr;
 	int const bpm;
 public:
-	Passage(std::string const &md, int const (&mt)[2], int const &tm, std::ifstream &input):
-		mode(md), metr{mt[0], mt[1]}, bpm(tm) {
+	Passage(std::string const &md, std::pair<int, int> const &mt, int tm, std::ifstream &input):
+		mode(md), metr(mt), bpm(tm) {
 		Rational crotchet(1, 4);
 		std::stack<Rational> tuplets;
 		for (int mctr = 1, c; c = input.peek(), c != '&' && c != '|' && c != ':'; mctr++) {
@@ -143,7 +144,7 @@ public:
 			for (auto const &n : measure) {
 				mval += n.value;
 			}
-			if (mval != Rational(metr[0], metr[1])) {
+			if (mval != Rational(metr.first, metr.second)) {
 				warns.push_back({mctr, mval});
 			}
 			notes.insert(notes.end(), measure.begin(), measure.end());
@@ -151,7 +152,7 @@ public:
 	}
 	void pshow() const {
 		std::cerr << color_info << "info: " << color_end
-		          << "mode = " << mode << ", metr = " << metr[0] << "/" << metr[1] << ", speed = " << bpm << " bpm, notes = " << notes.size() << "." << std::endl;
+		          << "mode = " << mode << ", metr = " << metr.first << "/" << metr.second << ", speed = " << bpm << " bpm, notes = " << notes.size() << "." << std::endl;
 		for (auto const &warn : warns) {
 			std::cerr << color_warn << "warn: " << color_end
 			          << "the " << std::to_string(warn.mctr)
@@ -169,7 +170,7 @@ public:
 		if (mode[0] >= 'a' && mode[0] <= 'g') {
 			reference = (pitch[(mode[0] - 'c' + 7) % 7] + 3) % 12 + 3;
 		}
-		for (auto const &c : mode.substr(1)) {
+		for (auto c : mode.substr(1)) {
 			switch (c) {
 			case '#':
 				reference++;
@@ -191,7 +192,7 @@ public:
 				tones.push_back({note.solfa != '0' ? 440 * pow(2, (reference + pitch[note.solfa - '1'] + note.accidental) / 12.0 + note.octave) : 0.0});
 			}
 			if (tones.size() != 0) {
-				tones.back().dura += (note.value * 60 * metr[1] / bpm).value();
+				tones.back().dura += (note.value * 60 * metr.second / bpm).value();
 			}
 		}
 		return tones;
@@ -203,13 +204,13 @@ class Music {
 public:
 	Music(std::ifstream &input) {
 		std::string mode = "C";
-		int metr[2] = {4, 4};
+		std::pair<int, int> metr = {4, 4};
 		int bpm = 88;
 		char endchar;
 		for (endchar = '&'; endchar == '&'; endchar = input.get()) {
 			if (std::string temp; input >> temp, temp.size() && temp != "~") {
 				mode = temp;
-				input >> metr[0] >> endchar >> metr[1] >> bpm;
+				input >> metr.first >> endchar >> metr.second >> bpm;
 			}
 			passages.emplace_back(mode, metr, bpm, input);
 		};
@@ -233,7 +234,7 @@ public:
 		}
 		std::cerr << order.back() + 1 << "." << std::endl;
 	}
-	void msave(std::ofstream &wav_file, char const &timbre) const {
+	void msave(std::ofstream &wav_file, char timbre) const {
 		std::vector<Tone> tones;
 		for (auto const &iter : order) {
 			auto passage_tones = passages[iter].tones();
