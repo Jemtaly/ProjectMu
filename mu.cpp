@@ -83,17 +83,10 @@ public:
             std::vector<Note> measure;
             for (int as, bs, c; c = input.get(), c != '|';) {
                 switch (c) {
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
+                case '1': case '2': case '3': case '4': case '5': case '6': case '7':
                     measure.push_back({crotchet, c, persist[c - '1']});
                     break;
-                case ',':
-                case '0':
+                case ',': case '0':
                     measure.push_back({crotchet, c, 0});
                     break;
                 case '=':
@@ -151,14 +144,17 @@ public:
         }
     }
     void pshow() const {
-        std::cerr << color_info << "info: " << color_end
-                  << "mode = " << mode << ", metr = " << metr.first << "/" << metr.second << ", speed = " << bpm << " bpm, notes = " << notes.size() << "." << std::endl;
+        std::cerr << color_info << "Info: " << color_end
+                  << "mode = " << mode << ", "
+                  << "metr = " << metr.first << "/" << metr.second << ", "
+                  << "speed = " << bpm << " bpm, "
+                  << "notes = " << notes.size() << "." << std::endl;
         for (auto const &warn : warns) {
-            std::cerr << color_warn << "warn: " << color_end
+            std::cerr << color_warn << "Warn: " << color_end
                       << "the " << std::to_string(warn.mctr)
                        + "tsnrtttttt"[(warn.mctr % 100) / 10 == 1 ? 0 : warn.mctr % 10]
-                       + "htddhhhhhh"[(warn.mctr % 100) / 10 == 1 ? 0 : warn.mctr % 10] << " "
-                      << "measure is irregular. (" << std::to_string(warn.mval.numerator()) << "/" << std::to_string(warn.mval.denominator()) << ")" << std::endl;
+                       + "htddhhhhhh"[(warn.mctr % 100) / 10 == 1 ? 0 : warn.mctr % 10] << " measure is irregular. "
+                      << "(" << std::to_string(warn.mval.numerator()) << "/" << std::to_string(warn.mval.denominator()) << ")" << std::endl;
         }
     }
     std::vector<Tone> tones() const {
@@ -228,7 +224,7 @@ public:
         for (auto const &passage : passages) {
             passage.pshow();
         }
-        std::cerr << color_info << "order: " << color_end;
+        std::cerr << color_info << "Order: " << color_end;
         for (int i = 0; i < order.size() - 1; i++) {
             std::cerr << order[i] + 1 << ", ";
         }
@@ -245,10 +241,10 @@ public:
             auto tone_data = tone.wave(timbre);
             data.insert(data.end(), tone_data.begin(), tone_data.end());
         }
-        int _size = data.size() * sizeof(BITS_T);
-        WavHead *head = new WavHead(_size);
+        int dsize = data.size() * sizeof(BITS_T);
+        WavHead *head = new WavHead(dsize);
         wav_file.write((char *)head, sizeof *head);
-        wav_file.write((char *)data.data(), _size);
+        wav_file.write((char *)data.data(), dsize);
         delete head;
     }
 };
@@ -263,7 +259,7 @@ int main(int argc, char *argv[]) {
     color_support = isatty(fileno(stderr));
 #endif
     if (color_support) {
-        color_info = "\033[36m";
+        color_info = "\033[32m";
         color_warn = "\033[33m";
         color_err = "\033[31m";
         color_end = "\033[0m";
@@ -296,7 +292,16 @@ int main(int argc, char *argv[]) {
         }
     }
     if ((rec & REC_ERR) != 0 || (rec & REC_TXT) == 0 || (rec & REC_WAV) == 0 && not(wav_file.open("a.wav", std::ios::binary), wav_file.is_open())) {
-        std::cerr << color_err << "usage: " << color_end << argv[0] << " [INFILE.NMN] [-o OUTFILE.WAV] [-t<n>]" << std::endl;
+        std::cerr << "Description: Generate audio file from numeric music notation." << std::endl
+                  << "Usage: " << argv[0] << " [-o OUTFILE] [-t<n>] FILE" << std::endl
+                  << "Options:" << std::endl
+                  << "  FILE        input file name" << std::endl
+                  << "  -o OUTFILE  output file name (default: a.wav)" << std::endl
+                  << "  -t0         timbre: sine wave (default)" << std::endl
+                  << "  -t1         timbre: square wave" << std::endl
+                  << "  -t2         timbre: triangle wave" << std::endl
+                  << "  -t3         timbre: sawtooth wave" << std::endl
+                  << "  -t4         timbre: superimposed sine waves" << std::endl;
         return 1;
     }
     Music mu(txt_file);
