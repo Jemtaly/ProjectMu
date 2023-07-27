@@ -27,10 +27,10 @@ public:
         }
         reduce();
     }
-    auto const &numerator() const {
+    auto numerator() const {
         return n;
     }
-    auto const &denominator() const {
+    auto denominator() const {
         return d;
     }
     int floor() const {

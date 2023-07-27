@@ -121,9 +121,9 @@ public:
                     break;
                 case '[':
                     input >> as;
-                    input.get();
+                    input.get(); // ':'
                     input >> bs;
-                    input.get();
+                    input.get(); // ']'
                     tuplets.emplace(as, bs);
                     crotchet /= tuplets.top();
                     break;
@@ -133,7 +133,7 @@ public:
                     break;
                 }
             }
-            Rational mval(0);
+            Rational mval;
             for (auto const &n : measure) {
                 mval += n.value;
             }
@@ -143,8 +143,8 @@ public:
             notes.insert(notes.end(), measure.begin(), measure.end());
         }
     }
-    void pshow() const {
-        std::cerr << color_info << "Info: " << color_end
+    void pshow(int i = 0) const {
+        std::cerr << color_info << "Passage " << i << ": " << color_end
                   << "mode = " << mode << ", "
                   << "metr = " << metr.first << "/" << metr.second << ", "
                   << "speed = " << bpm << " bpm, "
@@ -221,10 +221,10 @@ public:
         }
     }
     void mshow() const {
-        for (auto const &passage : passages) {
-            passage.pshow();
+        for (int i = 0; i < passages.size(); i++) {
+            passages[i].pshow(i + 1);
         }
-        std::cerr << color_info << "Order: " << color_end;
+        std::cerr << color_info << "Passage order: " << color_end;
         for (int i = 0; i < order.size() - 1; i++) {
             std::cerr << order[i] + 1 << ", ";
         }
