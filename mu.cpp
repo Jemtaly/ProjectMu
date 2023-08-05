@@ -47,6 +47,8 @@ struct Tone {
     auto wave(char t) const {
         int size = dura * WAV_SR;
         int peri = WAV_SR / freq;
+        double A = TAU / WAV_SR * (freq + 0.0);
+        double B = TAU / WAV_SR * (freq + 5.0);
         std::vector<BITS_T> wave(size, BITS_M);
         for (int i = 0; i < size; i++) {
             wave[i] += fmin(1.0, fmin(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (
@@ -54,8 +56,8 @@ struct Tone {
                 t == '1' ? i % peri < peri / 2 ? -1.0 : 1.0 : // square
                 t == '2' ? (double)(abs(i % peri * 4 - peri * 2) - peri) / peri : // triangle
                 t == '3' ? (double)(abs(i % peri * 2 - peri * 0) - peri) / peri : // sawtooth
-                t == '4' ? sin(TAU / WAV_SR * freq * i) * 0.6 - sin(TAU / WAV_SR * (freq + 5) * i) * 0.4 : // beat
-                           sin(TAU / WAV_SR * freq * i) * 1.0 - sin(TAU / WAV_SR * (freq + 5) * i) * 0.0); // sine
+                t >= '4' ? sin(A * i) * 0.6 - sin(B * i) * 0.4 : // beat
+                           sin(A * i) * 1.0 - sin(B * i) * 0.0); // sine
         }
         return wave;
     }
@@ -76,7 +78,7 @@ public:
         for (auto c : mode) {
             switch (c) {
             case 'C': case 'D': case 'E': case 'F': case 'G': case 'A': case 'B':
-                reference = (pitch[(c - 'C' + 7) % 7] + 3) % 12 + 0; break;
+                reference = (pitch[(c - 'C' + 7) % 7] + 3) % 12; break;
             case '#':
                 reference++; break;
             case 'b':
@@ -90,7 +92,7 @@ public:
         Rational crotchet(1, 4);
         std::stack<Rational> tuplets;
         for (int mctr = 1, c; c = input.peek(), c != '&' && c != '|' && c != ':' && c != '~'; mctr++) {
-            int persist[7] = {0};
+            int persist[7] = {};
             std::vector<Note> measure;
             for (int as, bs, c; c = input.get(), c != '|';) {
                 switch (c) {
@@ -99,20 +101,28 @@ public:
                 case ',': case '0':
                     measure.push_back({crotchet, c, 0}); break;
                 case '=':
+                    if (measure.empty()) { throw std::runtime_error("'=' shouldn't appear at the beginning of a measure.");}
                     measure.back().accidental = persist[measure.back().solfa - '1'] = 0; break;
                 case '#':
+                    if (measure.empty()) { throw std::runtime_error("'#' shouldn't appear at the beginning of a measure.");}
                     measure.back().accidental = persist[measure.back().solfa - '1'] = 1; break;
                 case 'b':
+                    if (measure.empty()) { throw std::runtime_error("'b' shouldn't appear at the beginning of a measure.");}
                     measure.back().accidental = persist[measure.back().solfa - '1'] = -1; break;
                 case '^':
+                    if (measure.empty()) { throw std::runtime_error("'^' shouldn't appear at the beginning of a measure.");}
                     measure.back().octave++; break;
                 case 'v':
+                    if (measure.empty()) { throw std::runtime_error("'v' shouldn't appear at the beginning of a measure.");}
                     measure.back().octave--; break;
                 case '-':
+                    if (measure.empty()) { throw std::runtime_error("'-' shouldn't appear at the beginning of a measure, use ',' instead.");}
                     measure.back().value += crotchet; break;
                 case '/':
+                    if (measure.empty()) { throw std::runtime_error("'/' shouldn't appear at the beginning of a measure.");}
                     measure.back().value /= 2; break;
                 case '.':
+                    if (measure.empty()) { throw std::runtime_error("'.' shouldn't appear at the beginning of a measure.");}
                     measure.back().value *= Rational(1, 2 * (measure.back().value / crotchet).numerator()) + 1; break;
                 case '<':
                     crotchet /= 2; break;
@@ -125,10 +135,11 @@ public:
                     crotchet /= tuplets.top();
                     break;
                 case '!':
+                    if (tuplets.empty()) { throw std::runtime_error("shouldn't close a tuplet that hasn't been opened.");}
                     crotchet *= tuplets.top();
                     tuplets.pop(); break;
                 case EOF:
-                    throw std::runtime_error("Unexpected end of file.");
+                    throw std::runtime_error("unexpected end of file.");
                 }
             }
             Rational mval;
@@ -169,16 +180,16 @@ public:
             if (endchar == '&') {
                 input >> mode >> metr.first >> endchar >> metr.second >> bpm;
             }
-            passages.emplace_back(mode, metr, bpm, input);
-            std::cerr << color_info << "Passage " << passages.size() << ": " << color_end
+            std::cerr << color_info << "Passage " << passages.size() + 1 << ": " << color_end
                       << "mode = " << mode << ", "
                       << "metr = " << metr.first << "/" << metr.second << ", "
                       << "speed = " << bpm << " bpm." << std::endl;
+            passages.emplace_back(mode, metr, bpm, input);
         }
         if (endchar == ':') {
             for (int i; input >> i;) {
                 if (i < 1 || i > passages.size()) {
-                    throw std::runtime_error("Passage index out of range.");
+                    throw std::runtime_error("passage index out of range: " + std::to_string(i));
                 }
                 order.push_back(i - 1);
             }
@@ -271,12 +282,12 @@ int main(int argc, char *argv[]) {
     try {
         std::ifstream txt_file = std::ifstream(txt_name);
         if (not txt_file.is_open()) {
-            throw std::runtime_error("Cannot open the input file.");
+            throw std::runtime_error("cannot open the input file: " + txt_name);
         }
         Music mu(txt_file);
         std::ofstream wav_file = std::ofstream(wav_name, std::ios::binary);
         if (not wav_file.is_open()) {
-            throw std::runtime_error("Cannot open the output file.");
+            throw std::runtime_error("cannot open the output file: " + wav_name);
         }
         mu.msave(wav_file, timbre);
     } catch (std::exception const &e) {
