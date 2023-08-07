@@ -17,9 +17,9 @@
 #define REC_TXT 2
 #define REC_WAV 4
 #define REC_TIM 8
-#define BITS_T char
-#define BITS_M 127
 #define WAV_SR 44100
+#define BITS_T uint16_t
+#define BITS_M (1 << sizeof(BITS_T) * 7)
 static std::string color_info, color_warn, color_err, color_end;
 struct WavHead {
     char riff_ID[4] = {'R', 'I', 'F', 'F'};
@@ -49,17 +49,19 @@ struct Tone {
         int peri = WAV_SR / freq;
         double A = TAU / WAV_SR * (freq + 0.0);
         double B = TAU / WAV_SR * (freq + 5.0);
-        std::vector<BITS_T> wave(size, BITS_M);
+        std::vector<double> wave(size);
+        std::vector<BITS_T> data(size);
         for (int i = 0; i < size; i++) {
-            wave[i] += fmin(1.0, fmin(i, size - i) / (0.02 * WAV_SR)) * BITS_M * (
-                not freq ? 0.0 :
-                t == '1' ? i % peri < peri / 2 ? -1.0 : 1.0 : // square
-                t == '2' ? (double)(abs(i % peri * 4 - peri * 2) - peri) / peri : // triangle
-                t == '3' ? (double)(abs(i % peri * 2 - peri * 0) - peri) / peri : // sawtooth
-                t >= '4' ? sin(A * i) * 0.6 - sin(B * i) * 0.4 : // beat
-                           sin(A * i) * 1.0 - sin(B * i) * 0.0); // sine
+            wave[i] = not freq ? 0.0
+                : t == '0' ? sin(A * i) * 1.0 - sin(B * i) * 0.0 // sine
+                : t == '1' ? sin(A * i) * 0.6 - sin(B * i) * 0.4 // superimposed sine
+                : t == '2' ? i % peri < peri / 2 ? -1.0 : 1.0 // square
+                : t == '3' ? (double)(abs(i % peri * 4 - peri * 2) - peri) / peri // triangle
+                : t == '4' ? (double)(abs(i % peri * 2 - peri * 0) - peri) / peri // sawtooth
+                : i < peri ? rand() / (double)RAND_MAX * 2.0 - 1.0 : (wave[i - peri] + wave[i - peri + 1]) * 0.5;  // karplus-strong
+            data[i] = fmin(0.999, fmin(i, size - i) / (0.02 * WAV_SR)) * wave[i] * BITS_M + BITS_M;
         }
-        return wave;
+        return data;
     }
 };
 class Passage {
@@ -97,45 +99,66 @@ public:
             for (int as, bs, c; c = input.get(), c != '|';) {
                 switch (c) {
                 case '1': case '2': case '3': case '4': case '5': case '6': case '7':
-                    measure.push_back({crotchet, c, persist[c - '1']}); break;
+                    measure.push_back({crotchet, c, persist[c - '1']});
+                    break;
                 case ',': case '0':
                     measure.push_back({crotchet, c, 0}); break;
                 case '=':
-                    if (measure.empty()) { throw std::runtime_error("'=' shouldn't appear at the beginning of a measure.");}
+                    if (measure.empty()) {
+                        throw std::runtime_error("'=' shouldn't appear at the beginning of a measure.");
+                    }
                     measure.back().accidental = persist[measure.back().solfa - '1'] = 0; break;
                 case '#':
-                    if (measure.empty()) { throw std::runtime_error("'#' shouldn't appear at the beginning of a measure.");}
+                    if (measure.empty()) {
+                        throw std::runtime_error("'#' shouldn't appear at the beginning of a measure.");
+                    }
                     measure.back().accidental = persist[measure.back().solfa - '1'] = 1; break;
                 case 'b':
-                    if (measure.empty()) { throw std::runtime_error("'b' shouldn't appear at the beginning of a measure.");}
+                    if (measure.empty()) {
+                        throw std::runtime_error("'b' shouldn't appear at the beginning of a measure.");
+                    }
                     measure.back().accidental = persist[measure.back().solfa - '1'] = -1; break;
                 case '^':
-                    if (measure.empty()) { throw std::runtime_error("'^' shouldn't appear at the beginning of a measure.");}
+                    if (measure.empty()) {
+                        throw std::runtime_error("'^' shouldn't appear at the beginning of a measure.");
+                    }
                     measure.back().octave++; break;
                 case 'v':
-                    if (measure.empty()) { throw std::runtime_error("'v' shouldn't appear at the beginning of a measure.");}
+                    if (measure.empty()) {
+                        throw std::runtime_error("'v' shouldn't appear at the beginning of a measure.");
+                    }
                     measure.back().octave--; break;
                 case '-':
-                    if (measure.empty()) { throw std::runtime_error("'-' shouldn't appear at the beginning of a measure, use ',' instead.");}
+                    if (measure.empty()) {
+                        throw std::runtime_error("'-' shouldn't appear at the beginning of a measure, use ',' instead.");
+                    }
                     measure.back().value += crotchet; break;
                 case '/':
-                    if (measure.empty()) { throw std::runtime_error("'/' shouldn't appear at the beginning of a measure.");}
+                    if (measure.empty()) {
+                        throw std::runtime_error("'/' shouldn't appear at the beginning of a measure.");
+                    }
                     measure.back().value /= 2; break;
                 case '.':
-                    if (measure.empty()) { throw std::runtime_error("'.' shouldn't appear at the beginning of a measure.");}
+                    if (measure.empty()) {
+                        throw std::runtime_error("'.' shouldn't appear at the beginning of a measure.");
+                    }
                     measure.back().value *= Rational(1, 2 * (measure.back().value / crotchet).numerator()) + 1; break;
                 case '<':
                     crotchet /= 2; break;
                 case '>':
                     crotchet *= 2; break;
                 case '[':
-                    input >> as; input.get(); // ':'
-                    input >> bs; input.get(); // ']'
+                    input >> as;
+                    input.get();  // ':'
+                    input >> bs;
+                    input.get();  // ']'
                     tuplets.emplace(as, bs);
                     crotchet /= tuplets.top();
                     break;
                 case '!':
-                    if (tuplets.empty()) { throw std::runtime_error("shouldn't close a tuplet that hasn't been opened.");}
+                    if (tuplets.empty()) {
+                        throw std::runtime_error("shouldn't close a tuplet that hasn't been opened.");
+                    }
                     crotchet *= tuplets.top();
                     tuplets.pop(); break;
                 case EOF:
@@ -148,9 +171,7 @@ public:
             }
             if (mval != Rational(metr.first, metr.second)) {
                 std::cerr << color_warn << "Warn: " << color_end
-                          << "the " << std::to_string(mctr)
-                           + "tsnrtttttt"[(mctr % 100) / 10 == 1 ? 0 : mctr % 10]
-                           + "htddhhhhhh"[(mctr % 100) / 10 == 1 ? 0 : mctr % 10] << " measure is irregular. "
+                          << "the " << std::to_string(mctr) + "tsnrtttttt"[(mctr % 100) / 10 == 1 ? 0 : mctr % 10] + "htddhhhhhh"[(mctr % 100) / 10 == 1 ? 0 : mctr % 10] << " measure is irregular. "
                           << "(" << std::to_string(mval.numerator()) << "/" << std::to_string(mval.denominator()) << ")" << std::endl;
             }
             notes.insert(notes.end(), measure.begin(), measure.end());
@@ -239,7 +260,7 @@ int main(int argc, char *argv[]) {
     }
     int rec = 0;
     char timbre = '0';
-    std::string txt_name = "-"; 
+    std::string txt_name = "-";
     std::string wav_name = "a.wav";
     for (int i = 1; (rec & REC_ERR) == 0 && i < argc; i++) {
         if (argv[i][0] == '-') {
@@ -273,10 +294,11 @@ int main(int argc, char *argv[]) {
                   << "  FILE        input file name" << std::endl
                   << "  -o OUTFILE  output file name (default: a.wav)" << std::endl
                   << "  -t0         timbre: sine wave (default)" << std::endl
-                  << "  -t1         timbre: square wave" << std::endl
-                  << "  -t2         timbre: triangle wave" << std::endl
-                  << "  -t3         timbre: sawtooth wave" << std::endl
-                  << "  -t4         timbre: superimposed sine waves" << std::endl;
+                  << "  -t1         timbre: superimposed sine waves" << std::endl
+                  << "  -t2         timbre: square wave" << std::endl
+                  << "  -t3         timbre: triangle wave" << std::endl
+                  << "  -t4         timbre: sawtooth wave" << std::endl
+                  << "  -t5         timbre: plucked string" << std::endl;
         return 1;
     }
     try {
