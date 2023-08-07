@@ -47,7 +47,7 @@ struct WavHead {
 struct Tone {
     double freq, dura = 0.0;
     auto join(std::back_insert_iterator<std::vector<BITS_T>> dest, char t) const {
-        int size = dura * WAV_SR;
+        int size = round(WAV_SR * dura + 0.0);
         int perr = round(WAV_SR / freq + 0.0);
         int perx = round(WAV_SR / freq + 0.5);
         double F = freq / WAV_SR;
