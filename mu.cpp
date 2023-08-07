@@ -48,7 +48,9 @@ struct Tone {
     double freq, dura = 0.0;
     auto join(std::back_insert_iterator<std::vector<BITS_T>> dest, char t) const {
         int size = dura * WAV_SR;
-        int peri = WAV_SR / freq;
+        int perr = round(WAV_SR / freq + 0.0);
+        int perx = round(WAV_SR / freq + 0.5);
+        double F = freq / WAV_SR;
         double A = TAU / WAV_SR * (freq + 0.0);
         double B = TAU / WAV_SR * (freq + 5.0);
         std::vector<double> wave(size);
@@ -56,10 +58,10 @@ struct Tone {
             wave[i] = not freq ? 0.0
                     : t == '0' ? sin(A * i) * 1.0 - sin(B * i) * 0.0 // sine
                     : t == '1' ? sin(A * i) * 0.6 - sin(B * i) * 0.4 // superimposed sine
-                    : t == '2' ? i % peri < peri / 2 ? -1.0 : 1.0 // square
-                    : t == '3' ? (double)(abs(i % peri * 4 - peri * 2) - peri) / peri // triangle
-                    : t == '4' ? (double)(abs(i % peri * 2 - peri * 0) - peri) / peri // sawtooth
-                    : i < peri ? rand() / (double)RAND_MAX * 2.0 - 1.0 : (wave[i - peri] + wave[i - peri + 1]) * 0.5; // karplus-strong
+                    : t == '2' ? fabs(fmod(F * i, 1.0) * 4.0 - 2.0) - 1.0 // triangle
+                    : t == '3' ? fabs(fmod(F * i, 1.0) * 2.0 - 0.0) - 1.0 // sawtooth
+                    : t == '4' ? i % perr < perr / 2 ? -1.0 : 1.0 // square
+                    : i < perx ? rand() / (double)RAND_MAX * 2.0 - 1.0 : (wave[i - perx] + wave[i - perx + 1]) * 0.5; // karplus-strong
         }
         for (int i = 0; i < size; i++) {
             wave[i] = wave[i] * fmin(1.0, fmin(i, size - i) / (0.02 * WAV_SR)); // fade in & out (0.02s)
@@ -299,9 +301,9 @@ int main(int argc, char *argv[]) {
                   << "  -o OUTFILE  output file name (default: a.wav)" << std::endl
                   << "  -t0         timbre: sine wave (default)" << std::endl
                   << "  -t1         timbre: superimposed sine waves" << std::endl
-                  << "  -t2         timbre: square wave" << std::endl
-                  << "  -t3         timbre: triangle wave" << std::endl
-                  << "  -t4         timbre: sawtooth wave" << std::endl
+                  << "  -t2         timbre: triangle wave" << std::endl
+                  << "  -t3         timbre: sawtooth wave" << std::endl
+                  << "  -t4         timbre: square wave" << std::endl
                   << "  -t5         timbre: plucked string" << std::endl;
         return 1;
     }
