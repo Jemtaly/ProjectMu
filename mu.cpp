@@ -70,7 +70,7 @@ struct Tone {
             constexpr double mm = std::numeric_limits<BITS_T>::max() - std::numeric_limits<BITS_T>::min() + 1;
             constexpr double lo = std::numeric_limits<BITS_T>::min();
             constexpr double hi = std::numeric_limits<BITS_T>::max();
-            return x >= 1.0 ? hi : x < -1.0 ? lo : (x + 1.0) * 0.5 * mm + lo;
+            return x >= 1.0 ? hi : x < -1.0 ? lo : floor((x + 1.0) * 0.5 * mm + lo);
         });
     }
 };
