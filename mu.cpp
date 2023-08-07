@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -9,6 +10,8 @@
 #include "rational.hpp"
 #if defined _WIN32
 #include <Windows.h>
+#undef min
+#undef max
 #elif defined __unix__
 #include <unistd.h>
 #endif
@@ -17,9 +20,8 @@
 #define REC_TXT 2
 #define REC_WAV 4
 #define REC_TIM 8
+#define BITS_T int16_t // uint8_t, int16_t, int32_t, int64_t
 #define WAV_SR 44100
-#define BITS_T uint16_t
-#define BITS_M (1 << sizeof(BITS_T) * 7)
 static std::string color_info, color_warn, color_err, color_end;
 struct WavHead {
     char riff_ID[4] = {'R', 'I', 'F', 'F'};
@@ -44,24 +46,30 @@ struct WavHead {
 };
 struct Tone {
     double freq, dura = 0.0;
-    auto wave(char t) const {
+    auto join(std::back_insert_iterator<std::vector<BITS_T>> dest, char t) const {
         int size = dura * WAV_SR;
         int peri = WAV_SR / freq;
         double A = TAU / WAV_SR * (freq + 0.0);
         double B = TAU / WAV_SR * (freq + 5.0);
         std::vector<double> wave(size);
-        std::vector<BITS_T> data(size);
         for (int i = 0; i < size; i++) {
             wave[i] = not freq ? 0.0
-                : t == '0' ? sin(A * i) * 1.0 - sin(B * i) * 0.0 // sine
-                : t == '1' ? sin(A * i) * 0.6 - sin(B * i) * 0.4 // superimposed sine
-                : t == '2' ? i % peri < peri / 2 ? -1.0 : 1.0 // square
-                : t == '3' ? (double)(abs(i % peri * 4 - peri * 2) - peri) / peri // triangle
-                : t == '4' ? (double)(abs(i % peri * 2 - peri * 0) - peri) / peri // sawtooth
-                : i < peri ? rand() / (double)RAND_MAX * 2.0 - 1.0 : (wave[i - peri] + wave[i - peri + 1]) * 0.5;  // karplus-strong
-            data[i] = fmin(0.999, fmin(i, size - i) / (0.02 * WAV_SR)) * wave[i] * BITS_M + BITS_M;
+                    : t == '0' ? sin(A * i) * 1.0 - sin(B * i) * 0.0 // sine
+                    : t == '1' ? sin(A * i) * 0.6 - sin(B * i) * 0.4 // superimposed sine
+                    : t == '2' ? i % peri < peri / 2 ? -1.0 : 1.0 // square
+                    : t == '3' ? (double)(abs(i % peri * 4 - peri * 2) - peri) / peri // triangle
+                    : t == '4' ? (double)(abs(i % peri * 2 - peri * 0) - peri) / peri // sawtooth
+                    : i < peri ? rand() / (double)RAND_MAX * 2.0 - 1.0 : (wave[i - peri] + wave[i - peri + 1]) * 0.5; // karplus-strong
         }
-        return data;
+        for (int i = 0; i < size; i++) {
+            wave[i] = wave[i] * fmin(1.0, fmin(i, size - i) / (0.02 * WAV_SR)); // fade in & out (0.02s)
+        }
+        std::transform(wave.begin(), wave.end(), dest, [](double x) -> BITS_T {
+            constexpr double mm = std::numeric_limits<BITS_T>::max() - std::numeric_limits<BITS_T>::min() + 1;
+            constexpr double lo = std::numeric_limits<BITS_T>::min();
+            constexpr double hi = std::numeric_limits<BITS_T>::max();
+            return x >= 1.0 ? hi : x < -1.0 ? lo : (x + 1.0) * 0.5 * mm + lo;
+        });
     }
 };
 class Passage {
@@ -177,15 +185,13 @@ public:
             notes.insert(notes.end(), measure.begin(), measure.end());
         }
     }
-    auto tones() const {
-        std::vector<Tone> tones = {{0.0}};
+    void join(std::vector<Tone> &tones) const {
         for (auto const &note : notes) {
             if (note.solfa != ',') {
                 tones.push_back({note.solfa != '0' ? 440 * pow(2, (reference + pitch[note.solfa - '1'] + note.accidental) / 12.0 + note.octave) : 0.0});
             }
             tones.back().dura += (note.value * 60 * metr.second / bpm).value();
         }
-        return tones;
     }
 };
 class Music {
@@ -225,16 +231,14 @@ public:
         }
         std::cerr << order.back() + 1 << "." << std::endl;
     }
-    void msave(std::ofstream &wav_file, char timbre) const {
-        std::vector<Tone> tones;
-        for (auto const &iter : order) {
-            auto passage_tones = passages[iter].tones();
-            tones.insert(tones.end(), passage_tones.begin(), passage_tones.end());
+    void save(std::ofstream &wav_file, char timbre) const {
+        std::vector<Tone> tones = {{0.0}};
+        for (auto iter : order) {
+            passages[iter].join(tones);
         }
         std::vector<BITS_T> data;
         for (auto const &tone : tones) {
-            auto tone_data = tone.wave(timbre);
-            data.insert(data.end(), tone_data.begin(), tone_data.end());
+            tone.join(std::back_inserter(data), timbre);
         }
         int dsize = data.size() * sizeof(BITS_T);
         WavHead *head = new WavHead(dsize);
@@ -311,7 +315,7 @@ int main(int argc, char *argv[]) {
         if (not wav_file.is_open()) {
             throw std::runtime_error("cannot open the output file: " + wav_name);
         }
-        mu.msave(wav_file, timbre);
+        mu.save(wav_file, timbre);
     } catch (std::exception const &e) {
         std::cerr << color_err << "Error: " << color_end << e.what() << std::endl;
         return 1;
