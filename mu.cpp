@@ -39,14 +39,14 @@ struct WavHead {
     } fmat = {1, 1, WAV_SR, WAV_SR * sizeof(BITS_T), sizeof(BITS_T), 8 * sizeof(BITS_T)};
     char data_ID[4] = {'d', 'a', 't', 'a'};
     uint32_t data_size;
-    WavHead(uint32_t ds):
-        data_size(ds),
+    WavHead(uint32_t ds_in_bytes):
+        data_size(ds_in_bytes),
         fmat_size(sizeof fmat),
-        riff_size(sizeof wave_ID + sizeof fmat_ID + sizeof fmat_size + sizeof fmat + sizeof data_ID + sizeof data_size + ds) {}
+        riff_size(sizeof wave_ID + sizeof fmat_ID + sizeof fmat_size + sizeof fmat + sizeof data_ID + sizeof data_size + ds_in_bytes) {}
 };
 struct Tone {
     double freq, dura = 0.0;
-    auto join(std::back_insert_iterator<std::vector<BITS_T>> dest, char t) const {
+    void generate(std::back_insert_iterator<std::vector<BITS_T>> dest, char t) const {
         int size = round(WAV_SR * dura + 0.0);
         int perr = round(WAV_SR / freq + 0.0);
         int perx = round(WAV_SR / freq + 0.5);
@@ -240,13 +240,12 @@ public:
         }
         std::vector<BITS_T> data;
         for (auto const &tone : tones) {
-            tone.join(std::back_inserter(data), timbre);
+            tone.generate(std::back_inserter(data), timbre);
         }
-        int dsize = data.size() * sizeof(BITS_T);
-        WavHead *head = new WavHead(dsize);
-        wav_file.write((char *)head, sizeof *head);
-        wav_file.write((char *)data.data(), dsize);
-        delete head;
+        uint32_t bytes = data.size() * sizeof(BITS_T);
+        WavHead const head(bytes);
+        wav_file.write((char const *)&head, sizeof head);
+        wav_file.write((char const *)data.data(), bytes);
     }
 };
 int main(int argc, char *argv[]) {
