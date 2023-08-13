@@ -22,7 +22,10 @@
 #define REC_TIM 8
 #define BITS_T int16_t // uint8_t, int16_t, int32_t, int64_t
 #define WAV_SR 44100
-static std::string color_info, color_warn, color_err, color_end;
+std::string color_info = "";
+std::string color_warn = "";
+std::string color_err = "";
+std::string color_end = "";
 struct WavHead {
     char riff_ID[4] = {'R', 'I', 'F', 'F'};
     uint32_t riff_size;
