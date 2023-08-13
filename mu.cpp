@@ -75,7 +75,7 @@ struct Tone {
     }
 };
 class Passage {
-    static inline int const pitch[7] = {0, 2, 4, 5, 7, 9, 11};
+    static constexpr int pitch[7] = {0, 2, 4, 5, 7, 9, 11};
     struct Note {
         Rational value;
         int solfa, accidental, octave = 0;
