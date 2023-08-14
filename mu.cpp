@@ -271,26 +271,26 @@ int main(int argc, char *argv[]) {
     std::string txt_name = "-";
     std::string wav_name = "a.wav";
     for (int i = 1; (rec & REC_ERR) == 0 && i < argc; i++) {
-        if (argv[i][0] == '-') {
-            if (argv[i][1] == 't') {
-                if ((rec & REC_TIM) == 0 && ((timbre = argv[i][2]) | 7) == '7' && argv[i][3] == '\0') {
-                    rec |= REC_TIM;
-                } else {
-                    rec |= REC_ERR;
-                }
-            } else if (argv[i][1] == 'o' && argv[i][2] == '\0') {
-                if ((rec & REC_WAV) == 0 && i + 1 < argc) {
-                    wav_name = argv[++i];
-                    rec |= REC_WAV;
-                } else {
-                    rec |= REC_ERR;
-                }
+        if (argv[i][0] != '-') {
+            if ((rec & REC_TXT) == 0) {
+                txt_name = argv[i];
+                rec |= REC_TXT;
             } else {
                 rec |= REC_ERR;
             }
-        } else if ((rec & REC_TXT) == 0) {
-            txt_name = argv[i];
-            rec |= REC_TXT;
+        } else if (argv[i][1] == 'o' && argv[i][2] == '\0') {
+            if ((rec & REC_WAV) == 0 && i + 1 < argc) {
+                wav_name = argv[++i];
+                rec |= REC_WAV;
+            } else {
+                rec |= REC_ERR;
+            }
+        } else if (argv[i][1] == 't') {
+            if ((rec & REC_TIM) == 0 && ((timbre = argv[i][2]) | 7) == '7' && argv[i][3] == '\0') {
+                rec |= REC_TIM;
+            } else {
+                rec |= REC_ERR;
+            }
         } else {
             rec |= REC_ERR;
         }
