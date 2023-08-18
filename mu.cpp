@@ -70,9 +70,9 @@ struct Tone {
             wave[i] = wave[i] * fmin(1.0, fmin(i, size - i) / (0.02 * WAV_SR)); // fade in & out (0.02s)
         }
         std::transform(wave.begin(), wave.end(), dest, [](double x) -> BITS_T {
-            constexpr double mm = std::numeric_limits<BITS_T>::max() - std::numeric_limits<BITS_T>::min() + 1;
-            constexpr double lo = std::numeric_limits<BITS_T>::min();
-            constexpr double hi = std::numeric_limits<BITS_T>::max();
+            static constexpr double mm = std::numeric_limits<BITS_T>::max() - std::numeric_limits<BITS_T>::min() + 1;
+            static constexpr double lo = std::numeric_limits<BITS_T>::min();
+            static constexpr double hi = std::numeric_limits<BITS_T>::max();
             return x >= 1.0 ? hi : x < -1.0 ? lo : floor((x + 1.0) * 0.5 * mm + lo);
         });
     }
@@ -252,7 +252,7 @@ public:
     }
 };
 int main(int argc, char *argv[]) {
-    bool color_support = false;
+    bool color_support;
 #if defined _WIN32
     HANDLE hStderr = GetStdHandle(STD_ERROR_HANDLE);
     DWORD dwStderrMode;
