@@ -1,4 +1,5 @@
 #pragma once
+#include <compare>
 class Rational {
 private:
     int n;
