@@ -7,19 +7,29 @@ ProjectMu is a tool for generating audio files in .wav format from numbered musi
 ## 使用方法
 
 ```
-mu [NMNFILE] [-o WAVFILE] [-tN]
+Description: Generate audio file from numeric music notation.
+Usage: mu [-o OUTFILE] [-t<n>] FILE
+Options:
+  FILE        input file name
+  -o OUTFILE  output file name (default: a.wav)
+  -t0         timbre: sine wave (default)
+  -t1         timbre: superimposed sine waves
+  -t2         timbre: triangle wave
+  -t3         timbre: sawtooth wave
+  -t4         timbre: square wave
+  -t5         timbre: plucked string
 ```
 
 | 参数 | 作用 |
 | --- | --- |
-| `NMNFILE` | 从 NMNFILE 中读取乐谱文件 |
-| `-o WAVFILE` | 输出到 WAVFILE 中（如缺省，则默认输出到 a.wav） |
-| `-tN` | 设置输出音频文件音色（`N` = `0`，`1`，`2`，`3`，`4` 时分别表示正弦波、方波、三角波、锯齿波，以及由两个正弦波叠加得到的合成音色。缺省时默认生成正弦波） |
+| `FILE` | 从 FILE 中读取乐谱文件 |
+| `-o OUTFILE` | 输出到 OUTFILE 中（如缺省，则默认输出到 a.wav） |
+| `-t<n>` | 设置输出音频文件音色（`n` = `0`，`1`，`2`，`3`，`4`, `5` 时分别表示正弦波、木管乐器、三角波、锯齿波、方波和拨弦乐器音色。缺省时默认生成正弦波） |
 
 示例:
 
 ```
-mu 'example/Bad Apple!!.nmn' -o 'Bad Apple!!.wav' -t1
+mu -o 'Bad Apple!!.wav' -t1 'example/Bad Apple!!.nmn'
 ```
 
 ## 简谱格式说明
