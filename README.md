@@ -22,7 +22,7 @@ mu [NMNFILE] [-o WAVFILE] [-tN]
 mu 'example/Bad Apple!!.nmn' -o 'Bad Apple!!.wav' -t1
 ```
 
-## NMN 文件格式
+## 简谱格式说明
 
 ### 示例
 
