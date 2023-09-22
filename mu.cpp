@@ -21,6 +21,9 @@
 #define REC_WAV 4
 #define REC_TIM 8
 #define BITS_T int16_t // uint8_t, int16_t, int32_t, int64_t
+#define BITS_D (1 << 8 * sizeof(BITS_T))
+#define BITS_L std::numeric_limits<BITS_T>::min()
+#define BITS_H std::numeric_limits<BITS_T>::max()
 #define WAV_SR 44100
 std::string color_info = "";
 std::string color_warn = "";
@@ -70,10 +73,7 @@ struct Tone {
             wave[i] = wave[i] * fmin(1.0, fmin(i, size - i) / (0.02 * WAV_SR)); // fade in & out (0.02s)
         }
         std::transform(wave.begin(), wave.end(), dest, [](double x) -> BITS_T {
-            static constexpr double mm = std::numeric_limits<BITS_T>::max() - std::numeric_limits<BITS_T>::min() + 1;
-            static constexpr double lo = std::numeric_limits<BITS_T>::min();
-            static constexpr double hi = std::numeric_limits<BITS_T>::max();
-            return x >= 1.0 ? hi : x < -1.0 ? lo : floor((x + 1.0) * 0.5 * mm + lo);
+            return x >= 1.0 ? BITS_H : x < -1.0 ? BITS_L : floor(BITS_L + (x + 1.0) * 0.5 * BITS_D);
         });
     }
 };
@@ -252,7 +252,7 @@ public:
     }
 };
 int main(int argc, char *argv[]) {
-    bool color_support;
+    bool color_support = false;
 #if defined _WIN32
     HANDLE hStderr = GetStdHandle(STD_ERROR_HANDLE);
     DWORD dwStderrMode;
