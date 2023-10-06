@@ -51,7 +51,8 @@ struct WavHead {
         riff_size(sizeof wave_ID + sizeof fmat_ID + sizeof fmat_size + sizeof fmat + sizeof data_ID + sizeof data_size + ds_in_bytes) {}
 };
 struct Tone {
-    double freq, dura = 0.0;
+    double freq, dura;
+    Tone(double freq): freq(freq), dura(0.0) {}
     void generate(std::back_insert_iterator<std::vector<BITS_T>> dest, char t) const {
         int size = round(WAV_SR * dura + 0.0);
         int perr = round(WAV_SR / freq + 0.0);
@@ -114,7 +115,7 @@ public:
                 case '1': case '2': case '3': case '4': case '5': case '6': case '7':
                     measure.push_back({crotchet, c, persist[c - '1']});
                     break;
-                case ',': case '0':
+                case '*': case '0':
                     measure.push_back({crotchet, c, 0}); break;
                 case '=':
                     if (measure.empty()) {
@@ -143,10 +144,10 @@ public:
                     measure.back().octave--; break;
                 case '-':
                     if (measure.empty()) {
-                        throw std::runtime_error("'-' shouldn't appear at the beginning of a measure, use ',' instead.");
+                        throw std::runtime_error("'-' shouldn't appear at the beginning of a measure, use '*' instead.");
                     }
                     measure.back().value += crotchet; break;
-                case '/':
+                case '/': case '_':
                     if (measure.empty()) {
                         throw std::runtime_error("'/' shouldn't appear at the beginning of a measure.");
                     }
@@ -192,8 +193,8 @@ public:
     }
     void join(std::vector<Tone> &tones) const {
         for (auto const &note : notes) {
-            if (note.solfa != ',') {
-                tones.push_back({note.solfa != '0' ? 440 * pow(2, (reference + pitch[note.solfa - '1'] + note.accidental) / 12.0 + note.octave) : 0.0});
+            if (note.solfa != '*') {
+                tones.emplace_back(note.solfa != '0' ? 440 * pow(2, (reference + pitch[note.solfa - '1'] + note.accidental) / 12.0 + note.octave) : 0.0);
             }
             tones.back().dura += (note.value * 60 * metr.second / bpm).value();
         }
