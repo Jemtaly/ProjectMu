@@ -107,7 +107,7 @@ public:
         }
         Rational crotchet(1, 4);
         std::stack<Rational> tuplets;
-        for (int mctr = 1, c; c = input.peek(), c != '&' && c != '|' && c != ':' && c != '~'; mctr++) {
+        for (int mctr = 1, c; c = input.peek(), c != ',' && c != ';' && c != '|' && c != ':'; mctr++) {
             int persist[7] = {};
             std::vector<Note> measure;
             for (int as, bs, c; c = input.get(), c != '|';) {
@@ -209,8 +209,8 @@ public:
         std::pair<int, int> metr = {4, 4};
         int bpm = 88;
         char endchar;
-        for (endchar = '&'; endchar == '&' || endchar == '~'; endchar = input.get()) {
-            if (endchar == '&') {
+        for (endchar = ';'; endchar == ',' || endchar == ';'; endchar = input.get()) {
+            if (endchar == ';') {
                 input >> mode >> metr.first >> endchar >> metr.second >> bpm;
             }
             std::cerr << color_info << "Passage " << passages.size() + 1 << ": " << color_end
