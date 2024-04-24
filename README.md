@@ -4,32 +4,44 @@ ProjectMu 是一个用于通过简谱生成 .wav 格式音频文件的工具。
 
 ProjectMu is a tool for generating audio files in .wav format from numbered musical notations.
 
+## 编译方法和依赖
+
+要编译 ProjectMu 需要安装 antlr4：
+
+```sh
+pip install antlr4-tools
+pip install antlr4-python3-runtime
+```
+
+完成后编译 `mu.g4`：
+
+```sh
+antlr4 -Dlanguage=Python3 -no-listener mu.g4
+```
+
+然后即可运行本目录下的 `mu.py`。
+
 ## 使用方法
 
 ```
-Description: Generate audio file from numeric music notation.
-Usage: mu [-o OUTFILE] [-t<n>] FILE
-Options:
-  FILE        input file name
-  -o OUTFILE  output file name (default: a.wav)
-  -t0         timbre: sine wave (default)
-  -t1         timbre: superimposed sine waves
-  -t2         timbre: triangle wave
-  -t3         timbre: sawtooth wave
-  -t4         timbre: square wave
-  -t5         timbre: plucked string
-```
+usage: mu.py [-h] [-o OUTPUT] [-t TIMBRE] filename
 
-| 参数 | 作用 |
-| --- | --- |
-| `FILE` | 从 FILE 中读取乐谱文件 |
-| `-o OUTFILE` | 输出到 OUTFILE 中（如缺省，则默认输出到 a.wav） |
-| `-t<n>` | 设置输出音频文件音色（`n` = `0`, `1`, `2`, `3`, `4`, `5` 时分别表示正弦波、木管乐器、三角波、锯齿波、方波和拨弦乐器音色。缺省时默认生成正弦波） |
+ProjectMu - Numbered Notation Score Compiler
+
+positional arguments:
+  filename    path to the input numbered notation score file
+
+options:
+  -h, --help  show this help message and exit
+  -o OUTPUT   output wav file path
+  -t {sine,poly,triangle,sawtooth,square}
+              timbre of the output sound
+```
 
 示例:
 
 ```
-mu -o 'Bad Apple!!.wav' -t1 'example/Bad Apple!!.nmn'
+mu -o 'Bad Apple!!.wav' -t sine 'example/Bad Apple!!.nmn'
 ```
 
 ## 简谱格式说明
@@ -97,7 +109,7 @@ G 4/4 137
 | `1` ~ `7` | 音符 |
 | `0` | 休止符 |
 | `*` | 用于替代延音线第一个以后的音符（表示延续前一个音符） |
-| `#` | 升号（放置在音符后） |
+| `#` | 升号（紧跟在音符后） |
 | `b` | 降号（同上） |
 | `=` | 还原号（同上） |
 | `^` | 将当前音符升高八度 |
