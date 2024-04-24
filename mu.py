@@ -5,10 +5,10 @@ from muLexer import muLexer
 from muParser import muParser
 from antlr4 import *
 import numpy as np
-Alpha = {
+Solfa = {
     '1': 0, '2': 2, '3': 4, '4': 5, '5': 7, '6': 9, '7': 11,
 }
-Solfa = {
+Alpha = {
     'C': 3, 'D': 5, 'E': 7, 'F': 8, 'G': 10, 'A': 0, 'B': 2,
 }
 def flatten(music):
@@ -23,7 +23,7 @@ def flatten(music):
         octav = mod.octav().getText()
         accid = accid.count('#') - accid.count('b')
         octav = octav.count("^") - octav.count("v")
-        alpha = Solfa[alpha] + accid + octav * 12
+        alpha = Alpha[alpha] + accid + octav * 12
         mod = mod.getText()
         bmp = int(bmp.num().getText())
         mtn = int(mtr.num(0).getText())
@@ -47,8 +47,9 @@ def flatten(music):
                             octav = note.octav().getText()
                             if len(accid) > 0:
                                 Accid[solfa] = accid.count('#') - accid.count('b')
+                            accid = Accid[solfa]
                             octav = octav.count("^") - octav.count("v")
-                            solfa = Alpha[solfa] + Accid[solfa] + octav * 12
+                            solfa = Solfa[solfa] + accid + octav * 12
                             passages[i].append([440 * 2 ** ((solfa + alpha) / 12), 0])
                         elif note.rest():
                             passages[i].append([0, 0])
@@ -91,10 +92,10 @@ funcs = {
     'square': lambda t, freq: np.sign(np.sin(2 * np.pi * freq * t)),
 }
 def main():
-    parser = argparse.ArgumentParser(description = 'ProjectMu - Numbered Musical Notation Compiler')
-    parser.add_argument('filename', type = str, help = 'input file')
-    parser.add_argument('-o', '--output', type = str, default = 'output.wav', help = 'output file')
-    parser.add_argument('-t', '--timbre', type = str, choices = funcs.keys(), default = 'sine', help = 'timbre')
+    parser = argparse.ArgumentParser(description = 'ProjectMu - Numbered Notation Score Compiler')
+    parser.add_argument('filename', type = str, help = 'path to the input numbered notation score file')
+    parser.add_argument('-o', '--output', type = str, default = 'output.wav', help = 'output wav file path')
+    parser.add_argument('-t', '--timbre', type = str, choices = funcs.keys(), default = 'sine', help = 'timbre of the output sound')
     args = parser.parse_args()
     input = FileStream(args.filename)
     lexer = muLexer(input)
