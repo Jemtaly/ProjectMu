@@ -26,11 +26,18 @@ measure
     ;
 element
     : note time
-    | '<' (element sps)* element '>'
-    | rat (element sps)* element '!'
+    | angled
+    | rat angled
+    | rat braced
     ;
 rat
     : '[' num (':' num)? ']'
+    ;
+angled
+    : '<' (element sps)* element '>'
+    ;
+braced
+    : '{' (element sps)* element '}'
     ;
 note
     : solfa accid octav

@@ -1,5 +1,6 @@
 import wave
 import argparse
+import sys
 from fractions import Fraction
 from muLexer import muLexer
 from muParser import muParser
@@ -11,7 +12,7 @@ Solfa = {
 Alpha = {
     'C': 3, 'D': 5, 'E': 7, 'F': 8, 'G': 10, 'A': 0, 'B': 2,
 }
-def flatten(music):
+def flatten(music, output = sys.stdout):
     passages = {}
     i = 0
     for group in music.group():
@@ -36,7 +37,7 @@ def flatten(music):
             for measure in passage.measure():
                 j += 1
                 Accid = {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0}
-                ctr = 0
+                ctr = Fraction(0)
                 def visit(element, base = Fraction(1, 4)):
                     nonlocal ctr
                     if element.note():
@@ -53,31 +54,37 @@ def flatten(music):
                             passages[i].append([440 * 2 ** ((solfa + alpha) / 12), 0])
                         elif note.rest():
                             passages[i].append([0, 0])
+                        elif len(passages[i]) == 0:
+                            output.write(f'Warning: A tied note is found at the beginning of Passage {i}, which is considered as a rest\n')
+                            passages[i].append([0, 0])
                         time = element.time().getText()
                         time = Fraction(1, 2 ** time.count('/')) * (2 - Fraction(1, 2 ** time.count('.')))
                         time = time * base
                         passages[i][-1][1] += time * 60 * mtd / bmp
                         ctr += time
                         return
+                    if element.angled():
+                        braced = element.angled()
+                        base /= 2
+                    else:
+                        braced = element.braced()
                     if element.rat():
                         rat = element.rat()
                         rtn = int(rat.num(0).getText())
                         rtd = int(rat.num(1).getText()) if rat.num(1) is not None else 2 ** (rtn.bit_length() - 1)
                         rat = Fraction(rtn, rtd)
                         base /= rat
-                    else:
-                        base /= 2
-                    for elem in element.element():
-                        visit(elem, base)
+                    for element in braced.element():
+                        visit(element, base)
                 for element in measure.element():
                     visit(element)
                 if ctr != mtr:
-                    print(f'Warning: Passage {i}, Measure {j} has wrong time signature, expected {mtr}, got {ctr}')
+                    output.write(f'Warning: Passage {i}, Measure {j} has wrong time signature, expected {mtr}, got {ctr}\n')
     order = [int(num.getText()) for num in music.final().num()] or passages.keys()
     tones = []
     for num in order:
         if num not in passages:
-            print(f'Warning: Passage {num} not found, skipping')
+            output.write(f'Warning: Passage {num} not found, skipping\n')
             continue
         tones.extend(passages[num])
     return tones
@@ -89,7 +96,7 @@ funcs = {
     'square': lambda t, freq: np.sign(np.sin(2 * np.pi * freq * t)),
 }
 def main():
-    parser = argparse.ArgumentParser(description = 'ProjectMu - Numbered Notation Score Compiler')
+    parser = argparse.ArgumentParser(description = 'ProjectMu - A Numbered Notation Score Compiler')
     parser.add_argument('filename', type = str, help = 'path to the input numbered notation score file')
     parser.add_argument('-o', '--output', type = str, default = 'output.wav', help = 'output wav file path')
     parser.add_argument('-t', '--timbre', type = str, choices = funcs.keys(), default = 'sine', help = 'timbre of the output sound')
