@@ -1,8 +1,8 @@
 # ProjectMu
 
-ProjectMu 是一个用于通过简谱生成 .wa, 格式音频文件的工具。
+ProjectMu 是一个用于通过简谱生成 .wav 格式音频文件的工具。
 
-ProjectMu is a tool for generating audio files in .wa, format from numbered musical notations.
+ProjectMu is a tool for generating audio files in .wav format from numbered musical notations.
 
 ## 编译方法和依赖
 
@@ -33,7 +33,7 @@ positional arguments:
 
 options:
   -h, --help  show this help message and exit
-  -o OUTPUT   output wa, file path
+  -o OUTPUT   output wav file path
   -t {sine,poly,triangle,sawtooth,square}
               timbre of the output sound
 ```
@@ -41,7 +41,7 @@ options:
 示例:
 
 ```
-mu -o 'Bad Apple!!.wa,' -t sine 'example/Bad Apple!!.nmn'
+mu -o 'Bad Apple!!.wav' -t sine 'example/Bad Apple!!.nmn'
 ```
 
 ## 简谱格式说明
@@ -53,10 +53,10 @@ mu -o 'Bad Apple!!.wa,' -t sine 'example/Bad Apple!!.nmn'
 ```
 G 3/4 88
 0 0 <5,1> |
-1 - [3]<321>! | 3 - <32> | 1 - 6, |
-5, - <5,1> | 1 - [3]<321>! | 3 - <23> | 5 - - |
-- - <35> | 5 - [3]<321>! | 3 - <32> | 1 - 6, |
-5, - <5,1> | 1 - [3]<321>! | 3 - 2 | 1 - - | - - ||
+1 - [3]<321> | 3 - <32> | 1 - 6, |
+5, - <5,1> | 1 - [3]<321> | 3 - <23> | 5 - - |
+- - <35> | 5 - [3]<321> | 3 - <32> | 1 - 6, |
+5, - <5,1> | 1 - [3]<321> | 3 - 2 | 1 - - | - - ||
 ```
 
 + Bad Apple!! - nomico
@@ -118,7 +118,7 @@ G 4/4 137
 | `.` | 附点 |
 | `/` | 用于表示下加线 |
 | `<...>` | 表示为 `<` 和 `>` 之间的所有音符添加下加线。例如，`<<1/2/>2/>` 等同于 `1///2///2//`. |
-| `[3]...!` | 三连音，同理， `[5]...!` 表示五连音。由四拍分拆而来的七连音可写作 `[7]...!` 或 `[7:4]...!`，而由六拍分拆而来或由八拍结合合而来的七连音则分别需表示为 `[7:6]...!` 和 `[7:8]...!`，依此类推。 |
+| `[3]{...}` | 三连音，同理， `[5]{...}` 表示五连音。由四拍分拆而来的七连音可写作 `[7]{...}` 或 `[7:4]{...}`，而由六拍分拆而来或由八拍结合合而来的七连音则分别需表示为 `[7:6]{...}` 和 `[7:8]{...}`，依此类推。此外，[x]{<...>} 可略写为 `[x]<...>`。 |
 
 -注：除以上符号外的字符（如括号，空格，换行符等）在乐谱中只起到方便阅读的作用，不会被解析。-
 
