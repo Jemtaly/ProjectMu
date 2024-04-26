@@ -22,7 +22,7 @@ def flatten(music):
         accid = mod.accid().getText()
         octav = mod.octav().getText()
         accid = accid.count('#') - accid.count('b')
-        octav = octav.count("^") - octav.count("v")
+        octav = octav.count("'") - octav.count(',')
         alpha = Alpha[alpha] + accid + octav * 12
         mod = mod.getText()
         bmp = int(bmp.num().getText())
@@ -48,16 +48,13 @@ def flatten(music):
                             if len(accid) > 0:
                                 Accid[solfa] = accid.count('#') - accid.count('b')
                             accid = Accid[solfa]
-                            octav = octav.count("^") - octav.count("v")
+                            octav = octav.count("'") - octav.count(',')
                             solfa = Solfa[solfa] + accid + octav * 12
                             passages[i].append([440 * 2 ** ((solfa + alpha) / 12), 0])
                         elif note.rest():
                             passages[i].append([0, 0])
                         time = element.time().getText()
-                        exts = time.count('-')
-                        unds = time.count('/')
-                        dots = time.count('.')
-                        time = Fraction(exts + 1) if exts else Fraction(2 ** (dots + 1) - 1, 2 ** (dots + unds))
+                        time = Fraction(1, 2 ** time.count('/')) * (2 - Fraction(1, 2 ** time.count('.')))
                         time = time * base
                         passages[i][-1][1] += time * 60 * mtd / bmp
                         ctr += time
@@ -65,7 +62,7 @@ def flatten(music):
                     if element.rat():
                         rat = element.rat()
                         rtn = int(rat.num(0).getText())
-                        rtd = int(rat.num(1).getText())
+                        rtd = int(rat.num(1).getText()) if rat.num(1) is not None else 2 ** (rtn.bit_length() - 1)
                         rat = Fraction(rtn, rtd)
                         base /= rat
                     else:
