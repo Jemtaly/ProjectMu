@@ -89,17 +89,22 @@ def flatten(music, output = sys.stdout):
         tones.extend(passages[num])
     return tones
 funcs = {
-    'sine': lambda t, freq: np.sin(2 * np.pi * freq * t),
-    'poly': lambda t, freq, delta = 2.0: np.sin(2 * np.pi * (freq - delta) * t) * 0.4 - np.sin(2 * np.pi * (freq + delta) * t) * 0.6,
-    'triangle': lambda t, freq: np.fabs(np.fmod(freq * t + 0.75, 1.0) * 4.0 - 2.0) - 1.0,
-    'sawtooth': lambda t, freq: np.fabs(np.fmod(freq * t + 0.50, 1.0) * 2.0 - 0.0) - 1.0,
-    'square': lambda t, freq: np.sign(np.sin(2 * np.pi * freq * t)),
+    'sn': lambda t, freq: np.sin(2 * np.pi * freq * t),
+    'pl': lambda t, freq, delta = 5.0: np.sin(2 * np.pi * (freq - delta / 2) * t) / 3 - np.sin(2 * np.pi * (freq + delta / 2) * t) / 3 * 2,
+    'tr': lambda t, freq: np.fabs(np.fmod(freq * t + 0.75, 1.0) * 4.0 - 2.0) - 1.0,
+    'st': lambda t, freq: np.fabs(np.fmod(freq * t + 0.50, 1.0) * 2.0 - 0.0) - 1.0,
+    'sq': lambda t, freq: np.sign(np.sin(2 * np.pi * freq * t)),
+    # 'sq': lambda t, freq, n = 8: np.sum([np.sin(2 * np.pi * (2 * i + 1) * freq * t) / (2 * i + 1) for i in range(n)], 0) * 4 / np.pi,
+    # 'tr': lambda t, freq, n = 8: np.sum([np.sin(2 * np.pi * (2 * i + 1) * freq * t) / (2 * i + 1) ** 2 * (-1) ** i for i in range(n)], 0) * 8 / np.pi ** 2,
+    # 'st': lambda t, freq, n = 8: np.sum([np.sin(2 * np.pi * (i + 1) * freq * t) / (i + 1) for i in range(n)], 0) * 2 / np.pi,
 }
 def main():
     parser = argparse.ArgumentParser(description = 'ProjectMu - A Numbered Notation Score Compiler')
     parser.add_argument('filename', type = str, help = 'path to the input numbered notation score file')
     parser.add_argument('-o', '--output', type = str, default = 'output.wav', help = 'output wav file path')
     parser.add_argument('-t', '--timbre', type = str, choices = funcs.keys(), default = 'sine', help = 'timbre of the output sound')
+    parser.add_argument('-r', '--sample-rate', type = int, default = 44100, help = 'sample rate of the output sound')
+    parser.add_argument('-w', '--sample-width', type = int, default = 2, choices = [1, 2], help = 'sample width of the output sound')
     args = parser.parse_args()
     input = FileStream(args.filename)
     lexer = muLexer(input)
@@ -108,12 +113,16 @@ def main():
     music = parser.music()
     tones = flatten(music)
     func = funcs[args.timbre]
-    data = np.concatenate([func(np.linspace(0, dura, int(44100 * dura)), freq) * np.fmin(np.fmin(np.linspace(0, dura, int(44100 * dura)) / 0.02, np.linspace(dura, 0, int(44100 * dura)) / 0.02), 1.0) for freq, dura in tones])
-    data = np.int16(data * 32767)
+    sr = args.sample_rate
+    sw = args.sample_width
+    tin = tout = 0.02
+    volume = 0.8
+    data = np.concatenate([func(np.linspace(0, dura, int(sr * dura)), freq) * np.fmin(np.fmin(np.linspace(0, dura, int(sr * dura)) / tin, np.linspace(dura, 0, int(sr * dura)) / tout), 1.0) * volume for freq, dura in tones])
+    data = np.int16(data * 32767) if sw == 2 else np.uint8(data * 127 + 128)
     with wave.open(args.output, 'wb') as file:
         file.setnchannels(1)
-        file.setsampwidth(2)
-        file.setframerate(44100)
+        file.setsampwidth(sw)
+        file.setframerate(sr)
         file.writeframes(data)
 if __name__ == '__main__':
     main()
