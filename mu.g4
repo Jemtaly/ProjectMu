@@ -10,6 +10,12 @@ group
     : mod spp mtr spp bmp nlp (passage ',' nlp)* passage
     ;
 mod
+    : sao '=' aao
+    ;
+sao
+    : accid solfa octav
+    ;
+aao
     : alpha accid octav
     ;
 mtr
@@ -40,7 +46,7 @@ braced
     : '{' (element sps)* element '}'
     ;
 note
-    : solfa accid octav
+    : sao
     | rest
     | tie
     ;
@@ -48,7 +54,7 @@ time
     : '/'* '.'*
     ;
 accid
-    : '='?
+    : '@'?
     | 'b'*
     | '#'*
     ;

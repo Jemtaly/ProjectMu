@@ -17,16 +17,24 @@ def flatten(music, output = sys.stdout):
     i = 0
     for group in music.group():
         mod = group.mod()
-        bmp = group.bmp()
-        mtr = group.mtr()
-        alpha = mod.alpha().getText()
-        accid = mod.accid().getText()
-        octav = mod.octav().getText()
+        aao = mod.aao()
+        alpha = aao.alpha().getText()
+        accid = aao.accid().getText()
         accid = accid.count('#') - accid.count('b')
+        octav = aao.octav().getText()
         octav = octav.count("'") - octav.count(',')
-        alpha = Alpha[alpha] + accid + octav * 12
-        mod = mod.getText()
+        aao = Alpha[alpha] + accid + octav * 12
+        sao = mod.sao()
+        solfa = sao.solfa().getText()
+        accid = sao.accid().getText()
+        accid = accid.count('#') - accid.count('b')
+        octav = sao.octav().getText()
+        octav = octav.count("'") - octav.count(',')
+        sao = Solfa[solfa] + accid + octav * 12
+        mod = aao - sao
+        bmp = group.bmp()
         bmp = int(bmp.num().getText())
+        mtr = group.mtr()
         mtn = int(mtr.num(0).getText())
         mtd = int(mtr.num(1).getText())
         mtr = Fraction(mtn, mtd)
@@ -42,16 +50,17 @@ def flatten(music, output = sys.stdout):
                     nonlocal ctr
                     if element.note():
                         note = element.note()
-                        if note.solfa():
-                            solfa = note.solfa().getText()
-                            accid = note.accid().getText()
-                            octav = note.octav().getText()
+                        if note.sao():
+                            sao = note.sao()
+                            solfa = sao.solfa().getText()
+                            accid = sao.accid().getText()
                             if len(accid) > 0:
                                 Accid[solfa] = accid.count('#') - accid.count('b')
                             accid = Accid[solfa]
+                            octav = sao.octav().getText()
                             octav = octav.count("'") - octav.count(',')
-                            solfa = Solfa[solfa] + accid + octav * 12
-                            passages[i].append([440 * 2 ** ((solfa + alpha) / 12), 0])
+                            sao = Solfa[solfa] + accid + octav * 12
+                            passages[i].append([440 * 2 ** ((sao + mod) / 12), 0])
                         elif note.rest():
                             passages[i].append([0, 0])
                         elif len(passages[i]) == 0:
