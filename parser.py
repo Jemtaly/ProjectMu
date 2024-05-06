@@ -1,5 +1,4 @@
 import io
-import re
 class ParserError(Exception):
     def __init__(self, input: io.StringIO, message: str):
         told = input.tell()
@@ -17,23 +16,23 @@ def parse_music(input):
     while True:
         told = input.tell()
         try:
-            parse(input, r';')
+            parse_ch(input, ';')
             groups.append(parse_group(input))
         except ParserError:
             input.seek(told)
             break
     order = parse_order(input)
-    parse(input, r'\Z')
+    parse_eof(input)
     return {'groups': groups, 'order': order}
 def parse_order(input):
     told = input.tell()
     try:
-        parse(input, r'\|')
+        parse_ch(input, '|')
         return None
     except ParserError:
         input.seek(told)
     try:
-        parse(input, r':')
+        parse_ch(input, ':')
         nums = []
         while True:
             told = input.tell()
@@ -54,7 +53,7 @@ def parse_group(input):
     while True:
         told = input.tell()
         try:
-            parse(input, r',')
+            parse_ch(input, ',')
             passages.append(parse_passage(input))
         except ParserError:
             input.seek(told)
@@ -79,7 +78,7 @@ def parse_measure(input):
         except ParserError:
             input.seek(told)
             break
-    parse(input, r'\|')
+    parse_ch(input, '|')
     return {'elements': elements}
 def parse_element(input):
     told = input.tell()
@@ -108,19 +107,19 @@ def parse_element(input):
         input.seek(told)
     raise ParserError(input, 'Expected element')
 def parse_rat(input):
-    parse(input, r'\[')
+    parse_ch(input, '[')
     n = parse_num(input)
     told = input.tell()
     try:
-        parse(input, r':')
+        parse_ch(input, ':')
         d = parse_num(input)
     except ParserError:
         input.seek(told)
         d = None
-    parse(input, r'\]')
+    parse_ch(input, ']')
     return {'n': n, 'd': d}
 def parse_angled(input):
-    parse(input, r'<')
+    parse_ch(input, '<')
     elements = []
     while True:
         told = input.tell()
@@ -129,10 +128,10 @@ def parse_angled(input):
         except ParserError:
             input.seek(told)
             break
-    parse(input, r'>')
+    parse_ch(input, '>')
     return {'elements': elements}
 def parse_braced(input):
-    parse(input, r'\{')
+    parse_ch(input, '{')
     elements = []
     while True:
         told = input.tell()
@@ -141,7 +140,7 @@ def parse_braced(input):
         except ParserError:
             input.seek(told)
             break
-    parse(input, r'\}')
+    parse_ch(input, '}')
     return {'elements': elements}
 def parse_note(input):
     told = input.tell()
@@ -150,13 +149,13 @@ def parse_note(input):
     except ParserError:
         input.seek(told)
     try:
-        rest = parse(input, r'0')
-        return {'rest': rest}
+        parse_ch(input, '0')
+        return {'rest': '0'}
     except ParserError:
         input.seek(told)
     try:
-        tied = parse(input, r'-')
-        return {'tied': tied}
+        parse_ch(input, '-')
+        return {'tied': '-'}
     except ParserError:
         input.seek(told)
     raise ParserError(input, 'Expected note')
@@ -172,12 +171,12 @@ def parse_aao(input):
     return {'alpha': alpha, 'accid': accid, 'octav': octav}
 def parse_mod(input):
     lft = parse_sao(input)
-    parse(input, r'=')
+    parse_ch(input, '=')
     rgt = parse_aao(input)
     return {'lft': lft, 'rgt': rgt}
 def parse_mtr(input):
     n = parse_num(input)
-    parse(input, r'/')
+    parse_ch(input, '/')
     d = parse_num(input)
     return {'n': n, 'd': d}
 def parse_bmp(input):
@@ -185,17 +184,17 @@ def parse_bmp(input):
 def parse_accid(input):
     told = input.tell()
     try:
-        parse(input, r'@')
+        parse_ch(input, '@')
         return 0
     except ParserError:
         input.seek(told)
     try:
-        parse(input, r'#')
+        parse_ch(input, '#')
         i = +1
         while True:
             told = input.tell()
             try:
-                parse(input, r'#')
+                parse_ch(input, '#')
                 i += 1
             except ParserError:
                 input.seek(told)
@@ -204,12 +203,12 @@ def parse_accid(input):
     except ParserError:
         input.seek(told)
     try:
-        parse(input, r'b')
+        parse_ch(input, 'b')
         i = -1
         while True:
             told = input.tell()
             try:
-                parse(input, r'b')
+                parse_ch(input, 'b')
                 i -= 1
             except ParserError:
                 input.seek(told)
@@ -221,12 +220,12 @@ def parse_accid(input):
 def parse_octav(input):
     told = input.tell()
     try:
-        parse(input, r"'")
+        parse_ch(input, "'")
         i = +1
         while True:
             told = input.tell()
             try:
-                parse(input, r"'")
+                parse_ch(input, "'")
                 i += 1
             except ParserError:
                 input.seek(told)
@@ -235,12 +234,12 @@ def parse_octav(input):
     except ParserError:
         input.seek(told)
     try:
-        parse(input, r',')
+        parse_ch(input, ',')
         i = -1
         while True:
             told = input.tell()
             try:
-                parse(input, r',')
+                parse_ch(input, ',')
                 i -= 1
             except ParserError:
                 input.seek(told)
@@ -254,7 +253,7 @@ def parse_time(input):
     while True:
         told = input.tell()
         try:
-            parse(input, r'/')
+            parse_ch(input, '/')
             und += 1
         except ParserError:
             input.seek(told)
@@ -263,28 +262,50 @@ def parse_time(input):
     while True:
         told = input.tell()
         try:
-            parse(input, r'\.')
+            parse_ch(input, '.')
             dot += 1
         except ParserError:
             input.seek(told)
             break
     return {'und': und, 'dot': dot}
 def parse_num(input):
-    return parse(input, r'[1-9][0-9]*')
+    parse_ws(input)
+    char = input.read(1)
+    if char not in ('1', '2', '3', '4', '5', '6', '7', '8', '9'):
+        raise ParserError(input, 'Expected a positive integer')
+    num = char
+    while True:
+        told = input.tell()
+        char = input.read(1)
+        if char not in ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'):
+            input.seek(told)
+            break
+        num += char
+    return num
 def parse_alpha(input):
-    return parse(input, r'[A-G]')
+    parse_ws(input)
+    char = input.read(1)
+    if char not in ('C', 'D', 'E', 'F', 'G', 'A', 'B'):
+        raise ParserError(input, 'Expected A-G')
+    return char
 def parse_solfa(input):
-    return parse(input, r'[1-7]')
-def parse(input, pattern):
+    parse_ws(input)
+    char = input.read(1)
+    if char not in ('1', '2', '3', '4', '5', '6', '7'):
+        raise ParserError(input, 'Expected 1-7')
+    return char
+def parse_eof(input):
+    parse_ws(input)
+    if input.read(1):
+        raise ParserError(input, 'Expected end of file')
+def parse_ch(input, char):
+    parse_ws(input)
+    if input.read(1) != char:
+        raise ParserError(input, f'Expected {char}')
+def parse_ws(input):
     while True:
         told = input.tell()
         char = input.read(1)
         if not char.isspace():
             input.seek(told)
             break
-    told = input.tell()
-    match = re.match(pattern, input.read())
-    if match is None:
-        raise ParserError(input, f'Expected {pattern}')
-    input.seek(told + match.end())
-    return match.group()
