@@ -13,19 +13,18 @@ class ParserError(Exception):
     def __str__(self):
         return f'{self.message} at line {self.lineno} column {self.colno}'
 def parse_music(input):
-    music = {}
-    music['groups'] = [parse_group(input)]
+    groups = [parse_group(input)]
     while True:
         told = input.tell()
         try:
             parse(input, r';')
-            music['groups'].append(parse_group(input))
+            groups.append(parse_group(input))
         except ParserError:
             input.seek(told)
             break
-    music['order'] = parse_order(input)
+    order = parse_order(input)
     parse(input, r'\Z')
-    return music
+    return {'groups': groups, 'order': order}
 def parse_order(input):
     told = input.tell()
     try:
@@ -46,45 +45,42 @@ def parse_order(input):
         return nums
     except ParserError:
         input.seek(told)
-    raise ParserError(input, 'Expected final')
+    raise ParserError(input, 'Expected order')
 def parse_group(input):
-    group = {}
-    group['mod'] = parse_mod(input)
-    group['mtr'] = parse_mtr(input)
-    group['bmp'] = parse_bmp(input)
-    group['passages'] = [parse_passage(input)]
+    mod = parse_mod(input)
+    mtr = parse_mtr(input)
+    bmp = parse_bmp(input)
+    passages = [parse_passage(input)]
     while True:
         told = input.tell()
         try:
             parse(input, r',')
-            group['passages'].append(parse_passage(input))
+            passages.append(parse_passage(input))
         except ParserError:
             input.seek(told)
             break
-    return group
+    return {'mod': mod, 'mtr': mtr, 'bmp': bmp, 'passages': passages}
 def parse_passage(input):
-    passage = {}
-    passage['measures'] = [parse_measure(input)]
+    measures = [parse_measure(input)]
     while True:
         told = input.tell()
         try:
-            passage['measures'].append(parse_measure(input))
+            measures.append(parse_measure(input))
         except ParserError:
             input.seek(told)
             break
-    return passage
+    return {'measures': measures}
 def parse_measure(input):
-    measure = {}
-    measure['elements'] = [parse_element(input)]
+    elements = [parse_element(input)]
     while True:
         told = input.tell()
         try:
-            measure['elements'].append(parse_element(input))
+            elements.append(parse_element(input))
         except ParserError:
             input.seek(told)
             break
     parse(input, r'\|')
-    return measure
+    return {'elements': elements}
 def parse_element(input):
     told = input.tell()
     try:
@@ -113,42 +109,40 @@ def parse_element(input):
     raise ParserError(input, 'Expected element')
 def parse_rat(input):
     parse(input, r'\[')
-    rat = {}
-    rat['n'] = parse_num(input)
+    n = parse_num(input)
     told = input.tell()
     try:
         parse(input, r':')
-        rat['d'] = parse_num(input)
+        d = parse_num(input)
     except ParserError:
         input.seek(told)
+        d = None
     parse(input, r'\]')
-    return rat
+    return {'n': n, 'd': d}
 def parse_angled(input):
     parse(input, r'<')
-    angled = {}
-    angled['elements'] = []
+    elements = []
     while True:
         told = input.tell()
         try:
-            angled['elements'].append(parse_element(input))
+            elements.append(parse_element(input))
         except ParserError:
             input.seek(told)
             break
     parse(input, r'>')
-    return angled
+    return {'elements': elements}
 def parse_braced(input):
     parse(input, r'\{')
-    braced = {}
-    braced['elements'] = []
+    elements = []
     while True:
         told = input.tell()
         try:
-            braced['elements'].append(parse_element(input))
+            elements.append(parse_element(input))
         except ParserError:
             input.seek(told)
             break
     parse(input, r'\}')
-    return braced
+    return {'elements': elements}
 def parse_note(input):
     told = input.tell()
     try:
