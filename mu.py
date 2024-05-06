@@ -15,7 +15,8 @@ Alpha = {
 def flatten(music, output = sys.stdout):
     unordered = {}
     i = 0
-    for group in music.groups().group():
+    groups = music.groups()
+    for group in groups.group():
         mod = group.mod()
         aao = mod.aao()
         alpha = aao.alpha().getText()
