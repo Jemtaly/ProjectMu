@@ -4,38 +4,35 @@ ProjectMu 是一个用于通过简谱生成 .wav 格式音频文件的工具。
 
 ProjectMu is a tool for generating audio files in .wav format from numbered musical notations.
 
-## 编译方法和依赖
-
-要编译 ProjectMu 需要安装 antlr4：
-
-```sh
-pip install antlr4-tools
-pip install antlr4-python3-runtime
-```
-
-完成后编译 `mu.g4`：
-
-```sh
-antlr4 -Dlanguage=Python3 -no-listener mu.g4
-```
-
-然后即可运行本目录下的 `mu.py`。
-
 ## 使用方法
 
 ```
-usage: mu.py [-h] [-o OUTPUT] [-t TIMBRE] filename
+usage: mu.py [-h] [-o OUTPUT] [-t {sn,pl,sq,tr,st}]
+             [-r SAMPLE_RATE] [-w {1,2}] [-a ATTACK] [-d DECAY]
+             [-v VOLUME]
+             filename
 
-ProjectMu - Numbered Notation Score Compiler
+ProjectMu - A Numbered Notation Score Compiler
 
 positional arguments:
-  filename    path to the input numbered notation score file
+  filename              path to the input numbered notation score file
 
 options:
-  -h, --help  show this help message and exit
-  -o OUTPUT   output wav file path
-  -t {sine,poly,triangle,sawtooth,square}
-              timbre of the output sound
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
+                        output wav file path
+  -t {sn,pl,sq,tr,st}, --timbre {sn,pl,sq,tr,st}
+                        timbre of the output sound
+  -r SAMPLE_RATE, --sample-rate SAMPLE_RATE
+                        sample rate of the output sound
+  -w {1,2}, --sample-width {1,2}
+                        sample width of the output sound
+  -a ATTACK, --attack ATTACK
+                        attack time of the output sound
+  -d DECAY, --decay DECAY
+                        decay time of the output sound
+  -v VOLUME, --volume VOLUME
+                        volume of the output sound
 ```
 
 示例:
