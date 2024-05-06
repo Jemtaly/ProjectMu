@@ -13,9 +13,9 @@ Alpha = {
     'C': 3, 'D': 5, 'E': 7, 'F': 8, 'G': 10, 'A': 0, 'B': 2,
 }
 def flatten(music, output = sys.stdout):
-    passages = {}
+    unordered = {}
     i = 0
-    for group in music.group():
+    for group in music.groups().group():
         mod = group.mod()
         aao = mod.aao()
         alpha = aao.alpha().getText()
@@ -38,11 +38,13 @@ def flatten(music, output = sys.stdout):
         mtn = int(mtr.num(0).getText())
         mtd = int(mtr.num(1).getText())
         mtr = Fraction(mtn, mtd)
-        for passage in group.passage():
+        passages = group.passages()
+        for passage in passages.passage():
             i += 1
-            passages[i] = []
+            unordered[i] = []
             j = 0
-            for measure in passage.measure():
+            measures = passage.measures()
+            for measure in measures.measure():
                 j += 1
                 Accid = {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0}
                 ctr = Fraction(0)
@@ -60,42 +62,48 @@ def flatten(music, output = sys.stdout):
                             octav = sao.octav().getText()
                             octav = octav.count("'") - octav.count(',')
                             sao = Solfa[solfa] + accid + octav * 12
-                            passages[i].append([440 * 2 ** ((sao + mod) / 12), 0])
+                            unordered[i].append([440 * 2 ** ((sao + mod) / 12), 0])
                         elif note.rest():
-                            passages[i].append([0, 0])
-                        elif len(passages[i]) == 0:
+                            unordered[i].append([0, 0])
+                        elif len(unordered[i]) == 0:
                             output.write(f'Warning: A tied note is found at the beginning of Passage {i}, which is considered as a rest\n')
-                            passages[i].append([0, 0])
+                            unordered[i].append([0, 0])
                         time = element.time().getText()
                         time = Fraction(1, 2 ** time.count('/')) * (2 - Fraction(1, 2 ** time.count('.')))
                         time = time * base
-                        passages[i][-1][1] += time * 60 * mtd / bmp
+                        unordered[i][-1][1] += time * 60 * mtd / bmp
                         ctr += time
-                        return
-                    if element.angled():
-                        braced = element.angled()
-                        base /= 2
                     else:
-                        braced = element.braced()
-                    if element.rat():
-                        rat = element.rat()
-                        rtn = int(rat.num(0).getText())
-                        rtd = int(rat.num(1).getText()) if rat.num(1) is not None else 2 ** (rtn.bit_length() - 1)
-                        rat = Fraction(rtn, rtd)
-                        base /= rat
-                    for element in braced.element():
-                        visit(element, base)
-                for element in measure.element():
+                        if element.rat():
+                            rat = element.rat()
+                            rtn = int(rat.num(0).getText())
+                            rtd = int(rat.num(1).getText()) if rat.num(1) is not None else 2 ** (rtn.bit_length() - 1)
+                            rat = Fraction(rtn, rtd)
+                            base /= rat
+                        if element.angled():
+                            elements = element.angled().elements()
+                            base /= 2
+                        else:
+                            elements = element.braced().elements()
+                        for element in elements.element():
+                            visit(element, base)
+                elements = measure.elements()
+                for element in elements.element():
                     visit(element)
                 if ctr != mtr:
                     output.write(f'Warning: Passage {i}, Measure {j} has wrong time signature, expected {mtr}, got {ctr}\n')
-    order = [int(num.getText()) for num in music.final().num()] or passages.keys()
+    final = music.final()
+    if final.nums():
+        nums = final.nums()
+        nums = [int(num.getText()) for num in nums.num()]
+    else:
+        nums = unordered.keys()
     tones = []
-    for num in order:
-        if num not in passages:
+    for num in nums:
+        if num not in unordered:
             output.write(f'Warning: Passage {num} not found, skipping\n')
             continue
-        tones.extend(passages[num])
+        tones.extend(unordered[num])
     return tones
 funcs = {
     'sn': lambda t, freq: np.sin(2 * np.pi * freq * t),

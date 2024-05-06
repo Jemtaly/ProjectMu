@@ -1,34 +1,27 @@
 grammar mu;
 music
-    : nls (group ';' nlp)* group final nls EOF
+    : nls groups final nls EOF
     ;
-final
-    : ':' nlp (num spp)* num
-    | '|'
+groups
+    : (group ';' nlp)* group
     ;
 group
-    : mod spp mtr spp bmp nlp (passage ',' nlp)* passage
+    : mod spp mtr spp bmp nlp passages
     ;
-mod
-    : sao '=' aao
-    ;
-sao
-    : accid solfa octav
-    ;
-aao
-    : alpha accid octav
-    ;
-mtr
-    : num '/' num
-    ;
-bmp
-    : num
+passages
+    : (passage ',' nlp)* passage
     ;
 passage
+    : measures
+    ;
+measures
     : (measure nls)* measure
     ;
 measure
-    : (element sps)+ '|'
+    : elements sps '|'
+    ;
+elements
+    : (element sps)* element
     ;
 element
     : note time
@@ -36,31 +29,50 @@ element
     | rat angled
     | rat braced
     ;
+final
+    : ':' nlp nums
+    | '|'
+    ;
+mod
+    : sao '=' aao
+    ;
+mtr
+    : num '/' num
+    ;
+bmp
+    : num
+    ;
 rat
     : '[' num (':' num)? ']'
     ;
 angled
-    : '<' (element sps)* element '>'
+    : '<' elements '>'
     ;
 braced
-    : '{' (element sps)* element '}'
+    : '{' elements '}'
     ;
 note
     : sao
     | rest
     | tie
     ;
+sao
+    : accid solfa octav
+    ;
+aao
+    : alpha accid octav
+    ;
 time
     : '/'* '.'*
     ;
 accid
-    : '@'?
-    | 'b'*
-    | '#'*
+    : ('b'+ | '#'+ | '@')?
     ;
 octav
-    : '\''*
-    | ','*
+    : ('\''+ | ','+)?
+    ;
+nums
+    : (num spp)* num
     ;
 num
     : ('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9') ('0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9')*
@@ -84,8 +96,8 @@ sps
     : ' '*
     ;
 nlp
-    : ' '* (('\n' | '\r') ' '*)+
+    : sps (('\n' | '\r') sps)+
     ;
 nls
-    : ' '* (('\n' | '\r') ' '*)*
+    : sps (('\n' | '\r') sps)*
     ;
