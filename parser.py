@@ -89,9 +89,8 @@ def parse_element(input):
     except ParserError:
         input.seek(told)
     try:
-        rat = parse_rat(input)
         angled = parse_angled(input)
-        return {'rat': rat, 'angled': angled}
+        return {'angled': angled}
     except ParserError:
         input.seek(told)
     try:
@@ -101,8 +100,9 @@ def parse_element(input):
     except ParserError:
         input.seek(told)
     try:
+        rat = parse_rat(input)
         angled = parse_angled(input)
-        return {'angled': angled}
+        return {'rat': rat, 'angled': angled}
     except ParserError:
         input.seek(told)
     raise ParserError(input, 'Expected element')
@@ -271,13 +271,13 @@ def parse_time(input):
 def parse_num(input):
     parse_ws(input)
     char = input.read(1)
-    if char not in ('1', '2', '3', '4', '5', '6', '7', '8', '9'):
+    if char not in {'1', '2', '3', '4', '5', '6', '7', '8', '9'}:
         raise ParserError(input, 'Expected a positive integer')
     num = char
     while True:
         told = input.tell()
         char = input.read(1)
-        if char not in ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'):
+        if char not in {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}:
             input.seek(told)
             break
         num += char
@@ -285,13 +285,13 @@ def parse_num(input):
 def parse_alpha(input):
     parse_ws(input)
     char = input.read(1)
-    if char not in ('C', 'D', 'E', 'F', 'G', 'A', 'B'):
+    if char not in {'C', 'D', 'E', 'F', 'G', 'A', 'B'}:
         raise ParserError(input, 'Expected A-G')
     return char
 def parse_solfa(input):
     parse_ws(input)
     char = input.read(1)
-    if char not in ('1', '2', '3', '4', '5', '6', '7'):
+    if char not in {'1', '2', '3', '4', '5', '6', '7'}:
         raise ParserError(input, 'Expected 1-7')
     return char
 def parse_eof(input):
