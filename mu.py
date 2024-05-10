@@ -5,7 +5,7 @@ import argparse
 import sys
 from fractions import Fraction
 from parser import parse_music
-from gui import GUI
+from piano import Piano
 Solfa = {
     '1': 0, '2': 2, '3': 4, '4': 5, '5': 7, '6': 9, '7': 11,
 }
@@ -104,10 +104,10 @@ def save(tones, func, sr, sw, attack, decay, volume, output):
         file.setsampwidth(sw)
         file.setframerate(sr)
         file.writeframes(data)
-def play(tones, func, sr, sw, attack, decay, volume, log = sys.stdout):
+def play(tones, func, sr, sw, attack, decay, volume, out = sys.stdout):
     pa = pyaudio.PyAudio()
     stream = pa.open(format = pa.get_format_from_width(sw), channels = 1, rate = sr, output = True)
-    with GUI(log) as gui:
+    with Piano(out) as gui:
         for h, d in tones:
             gui.show(h)
             data = gen_wave(h, d, func, attack, decay, volume, sr, sw)

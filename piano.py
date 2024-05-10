@@ -1,6 +1,6 @@
 block = ' ', '▀', '▄', '█'
 frame = ' ', '╵', '╷', '│', '╴', '┘', '┐', '┤', '╶', '└', '┌', '├', '─', '┴', '┬', '┼'
-class GUI:
+class Piano:
     white = {3: 1, 5: 3, 7: 5, 8: 7, 10: 9, 0: 11, 2: 13}
     black = {4: 2, 6: 4, 9: 8, 11: 10, 1: 12}
     def __init__(self, output, H = 10, W = 4, B = 8, R = 2, T = 1, L = 2, D = 2, U = 3, P = 4, E = 1, V = 2, Q = 3):
@@ -24,18 +24,18 @@ class GUI:
             self.output.write(f'\033[{T + H};{L + i * W * 2}H' + bot)
             for j in range(1, H):
                 self.output.write(f'\033[{T + j};{L + i * W * 2}H' + '│')
-        for i in GUI.white.values():
+        for i in Piano.white.values():
             self.output.write(f'\033[{T + 0};{L + i * W - (W - 1)}H' + '─' * (W * 2 - 1))
             self.output.write(f'\033[{T + H};{L + i * W - (W - 1)}H' + '─' * (W * 2 - 1))
-        for i in GUI.black.values():
+        for i in Piano.black.values():
             self.output.write(f'\033[{T + 0};{L + i * W - R}H' + '▄' * (R * 2 + 1))
             for j in range(1, B):
                 self.output.write(f'\033[{T + j};{L + i * W - R}H' + '█' * (R * 2 + 1))
         self.output.flush()
         if h == float('-inf'):
             return
-        elif h % 12 in GUI.white:
-            i = GUI.white[h % 12]
+        elif h % 12 in Piano.white:
+            i = Piano.white[h % 12]
             u = (H * 2 - U + 0) // 2
             d = (H * 2 - D + 1) // 2
             if (H * 2 - U + 1) % 2 == 1:
@@ -44,8 +44,8 @@ class GUI:
                 self.output.write(f'\033[{T + j};{L + i * W - P // 2}H' + ('▐' + '█' * (P - 1) + '▌' if P % 2 == 0 else '█' * P))
             if (H * 2 - D + 1) % 2 == 1:
                 self.output.write(f'\033[{T + d};{L + i * W - P // 2}H' + ('▝' + '▀' * (P - 1) + '▘' if P % 2 == 0 else '▀' * P))
-        elif h % 12 in GUI.black:
-            i = GUI.black[h % 12]
+        elif h % 12 in Piano.black:
+            i = Piano.black[h % 12]
             u = (B * 2 - V - 1) // 2
             d = (B * 2 - E - 0) // 2
             if (B * 2 - V) % 2 == 1:
