@@ -98,20 +98,20 @@ def gen_wave(h, d, func, attack, decay, volume, sr, sw):
     data = func(np.linspace(0, d, int(sr * d)), 440 * 2 ** (h / 12)) * np.fmin(np.fmin(np.linspace(0, d, int(sr * d)) / attack, np.linspace(d, 0, int(sr * d)) / decay), 1.0) * volume
     return np.int16(data * 32767) if sw == 2 else np.uint8(data * 127 + 128)
 def save(tones, func, sr, sw, attack, decay, volume, output):
-    data = np.concatenate([gen_wave(h, d, func, attack, decay, volume, sr, sw) for h, d in tones])
     with wave.open(output, 'wb') as file:
         file.setnchannels(1)
         file.setsampwidth(sw)
         file.setframerate(sr)
-        file.writeframes(data)
+        for h, d in tones:
+            file.writeframes(gen_wave(h, d, func, attack, decay, volume, sr, sw).tobytes())
 def play(tones, func, sr, sw, attack, decay, volume, out = sys.stdout):
     pa = pyaudio.PyAudio()
     stream = pa.open(format = pa.get_format_from_width(sw), channels = 1, rate = sr, output = True)
     with Piano(out) as gui:
         for h, d in tones:
             gui.show(h)
-            data = gen_wave(h, d, func, attack, decay, volume, sr, sw)
-            stream.write(data.tobytes())
+            stream.write(gen_wave(h, d, func, attack, decay, volume, sr, sw).tobytes())
+            gui.show(-np.inf)
     stream.stop_stream()
     stream.close()
     pa.terminate()
