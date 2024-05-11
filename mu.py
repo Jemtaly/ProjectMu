@@ -10,7 +10,7 @@ Solfa = {
     '1': 0, '2': 2, '3': 4, '4': 5, '5': 7, '6': 9, '7': 11,
 }
 Alpha = {
-    'C': 3, 'D': 5, 'E': 7, 'F': 8, 'G': 10, 'A': 0, 'B': 2,
+    'A': 9, 'B': 11, 'C': 12, 'D': 14, 'E': 16, 'F': 17, 'G': 19,
 }
 def flatten(music, output = sys.stdout):
     unordered = {}
@@ -95,7 +95,7 @@ funcs = {
     # 'st': lambda t, freq: np.fabs(np.fmod(freq * t + 0.50, 1.0) * 2.0 - 0.0) - 1.0,
 }
 def gen_wave(h, d, func, attack, decay, volume, sr, sw):
-    data = func(np.linspace(0, d, int(sr * d)), 440 * 2 ** (h / 12)) * np.fmin(np.fmin(np.linspace(0, d, int(sr * d)) / attack, np.linspace(d, 0, int(sr * d)) / decay), 1.0) * volume
+    data = func(np.linspace(0, d, int(sr * d)), 440 * 2 ** ((h - 9) / 12)) * np.fmin(np.fmin(np.linspace(0, d, int(sr * d)) / attack, np.linspace(d, 0, int(sr * d)) / decay), 1.0) * volume
     return np.int16(data * 32767) if sw == 2 else np.uint8(data * 127 + 128)
 def save(tones, func, sr, sw, attack, decay, volume, output):
     with wave.open(output, 'wb') as file:
@@ -104,10 +104,10 @@ def save(tones, func, sr, sw, attack, decay, volume, output):
         file.setframerate(sr)
         for h, d in tones:
             file.writeframes(gen_wave(h, d, func, attack, decay, volume, sr, sw).tobytes())
-def play(tones, func, sr, sw, attack, decay, volume, out = sys.stdout):
+def play(tones, func, sr, sw, attack, decay, volume, output = sys.stdout):
     pa = pyaudio.PyAudio()
     stream = pa.open(format = pa.get_format_from_width(sw), channels = 1, rate = sr, output = True)
-    with Piano(out) as gui:
+    with Piano(output) as gui:
         for h, d in tones:
             gui.show(h)
             stream.write(gen_wave(h, d, func, attack, decay, volume, sr, sw).tobytes())
