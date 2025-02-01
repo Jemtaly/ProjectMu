@@ -1,8 +1,9 @@
-import io
+from io import TextIOBase
+from dataclasses import dataclass
 
 
 class ParserError(Exception):
-    def __init__(self, input: io.StringIO, message: str):
+    def __init__(self, input: "TextIOBase", message: "str"):
         told = input.tell()
         input.seek(0)
         prev = input.read(told)
@@ -16,7 +17,107 @@ class ParserError(Exception):
         return f"{self.message} at line {self.lineno} column {self.colno}"
 
 
-def parse_music(input):
+@dataclass
+class Music:
+    groups: "list[Group]"
+    order: "list[int] | None"
+
+
+@dataclass
+class Group:
+    mod: "Mode"
+    mtr: "Metre"
+    bmp: "int"
+    passages: "list[Passage]"
+
+
+@dataclass
+class Passage:
+    measures: "list[Measure]"
+
+
+@dataclass
+class Measure:
+    elements: "list[Element]"
+
+
+@dataclass
+class TimedNote:
+    note: "Note"
+    time: "Time"
+
+
+@dataclass
+class Braced:
+    inners: "list[Element]"
+
+
+@dataclass
+class Angled:
+    inners: "list[Element]"
+
+
+@dataclass
+class Rated:
+    ratio: "Ratio"
+    inner: "Element"
+
+
+Element = TimedNote | Braced | Angled | Rated
+
+
+@dataclass
+class Ratio:
+    n: "int"
+    d: "int | None"
+
+
+@dataclass
+class Rest:
+    pass
+
+
+@dataclass
+class Tied:
+    pass
+
+
+@dataclass
+class SAO:
+    solfa: "str"
+    accid: "int | None"
+    octav: "int"
+
+
+Note = Rest | Tied | SAO
+
+
+@dataclass
+class AAO:
+    alpha: "str"
+    accid: "int | None"
+    octav: "int"
+
+
+@dataclass
+class Mode:
+    lft: "SAO"
+    rgt: "AAO"
+
+
+@dataclass
+class Metre:
+    n: "int"
+    d: "int"
+
+
+@dataclass
+class Time:
+    und: "int"
+    dot: "int"
+
+
+def parse_music(input: "TextIOBase") -> "Music":
     groups = [parse_group(input)]
     while True:
         told = input.tell()
@@ -28,10 +129,10 @@ def parse_music(input):
             break
     order = parse_order(input)
     parse_eof(input)
-    return {"groups": groups, "order": order}
+    return Music(groups=groups, order=order)
 
 
-def parse_order(input):
+def parse_order(input: "TextIOBase") -> "list[int] | None":
     told = input.tell()
     try:
         parse_ch(input, "|")
@@ -54,7 +155,7 @@ def parse_order(input):
     raise ParserError(input, "Expected order")
 
 
-def parse_group(input):
+def parse_group(input: "TextIOBase") -> "Group":
     mod = parse_mod(input)
     mtr = parse_mtr(input)
     bmp = parse_bmp(input)
@@ -67,10 +168,10 @@ def parse_group(input):
         except ParserError:
             input.seek(told)
             break
-    return {"mod": mod, "mtr": mtr, "bmp": bmp, "passages": passages}
+    return Group(mod=mod, mtr=mtr, bmp=bmp, passages=passages)
 
 
-def parse_passage(input):
+def parse_passage(input: "TextIOBase") -> "Passage":
     measures = [parse_measure(input)]
     while True:
         told = input.tell()
@@ -79,10 +180,10 @@ def parse_passage(input):
         except ParserError:
             input.seek(told)
             break
-    return {"measures": measures}
+    return Passage(measures=measures)
 
 
-def parse_measure(input):
+def parse_measure(input: "TextIOBase") -> "Measure":
     elements = [parse_element(input)]
     while True:
         told = input.tell()
@@ -92,66 +193,37 @@ def parse_measure(input):
             input.seek(told)
             break
     parse_ch(input, "|")
-    return {"elements": elements}
+    return Measure(elements=elements)
 
 
-def parse_element(input):
+def parse_element(input: "TextIOBase") -> "Element":
     told = input.tell()
     try:
-        note = parse_note(input)
-        time = parse_time(input)
-        return {"note": note, "time": time}
+        return parse_timed_note(input)
     except ParserError:
         input.seek(told)
     try:
-        angled = parse_angled(input)
-        return {"angled": angled}
+        return parse_braced(input)
     except ParserError:
         input.seek(told)
     try:
-        rat = parse_rat(input)
-        braced = parse_braced(input)
-        return {"rat": rat, "braced": braced}
+        return parse_angled(input)
     except ParserError:
         input.seek(told)
     try:
-        rat = parse_rat(input)
-        angled = parse_angled(input)
-        return {"rat": rat, "angled": angled}
+        return parse_rated(input)
     except ParserError:
         input.seek(told)
     raise ParserError(input, "Expected element")
 
 
-def parse_rat(input):
-    parse_ch(input, "[")
-    n = parse_positive(input)
-    told = input.tell()
-    try:
-        parse_ch(input, ":")
-        d = parse_positive(input)
-    except ParserError:
-        input.seek(told)
-        d = None
-    parse_ch(input, "]")
-    return {"n": n, "d": d}
+def parse_timed_note(input: "TextIOBase") -> "TimedNote":
+    note = parse_note(input)
+    time = parse_time(input)
+    return TimedNote(note=note, time=time)
 
 
-def parse_angled(input):
-    parse_ch(input, "<")
-    elements = []
-    while True:
-        told = input.tell()
-        try:
-            elements.append(parse_element(input))
-        except ParserError:
-            input.seek(told)
-            break
-    parse_ch(input, ">")
-    return {"elements": elements}
-
-
-def parse_braced(input):
+def parse_braced(input: "TextIOBase") -> "Braced":
     parse_ch(input, "{")
     elements = []
     while True:
@@ -162,61 +234,103 @@ def parse_braced(input):
             input.seek(told)
             break
     parse_ch(input, "}")
-    return {"elements": elements}
+    return Braced(inners=elements)
 
 
-def parse_note(input):
+def parse_angled(input: "TextIOBase") -> "Angled":
+    parse_ch(input, "<")
+    elements = []
+    while True:
+        told = input.tell()
+        try:
+            elements.append(parse_element(input))
+        except ParserError:
+            input.seek(told)
+            break
+    parse_ch(input, ">")
+    return Angled(inners=elements)
+
+
+def parse_rated(input: "TextIOBase") -> "Rated":
+    rat = parse_rat(input)
+    inner = parse_element(input)
+    return Rated(ratio=rat, inner=inner)
+
+
+def parse_rat(input: "TextIOBase") -> "Ratio":
+    parse_ch(input, "[")
+    n = parse_positive(input)
+    told = input.tell()
+    try:
+        parse_ch(input, ":")
+        d = parse_positive(input)
+    except ParserError:
+        input.seek(told)
+        d = None
+    parse_ch(input, "]")
+    return Ratio(n=n, d=d)
+
+
+def parse_note(input: "TextIOBase") -> "Note":
     told = input.tell()
     try:
         return parse_sao(input)
     except ParserError:
         input.seek(told)
     try:
-        parse_ch(input, "0")
-        return {"rest": "0"}
+        return parse_rest(input)
     except ParserError:
         input.seek(told)
     try:
-        parse_ch(input, "-")
-        return {"tied": "-"}
+        return parse_tied(input)
     except ParserError:
         input.seek(told)
     raise ParserError(input, "Expected note")
 
 
-def parse_sao(input):
+def parse_sao(input: "TextIOBase") -> "SAO":
     accid = parse_accid(input)
     solfa = parse_solfa(input)
     octav = parse_octav(input)
-    return {"accid": accid, "solfa": solfa, "octav": octav}
+    return SAO(solfa=solfa, accid=accid, octav=octav)
 
 
-def parse_aao(input):
+def parse_rest(input: "TextIOBase") -> "Rest":
+    parse_ch(input, "0")
+    return Rest()
+
+
+def parse_tied(input: "TextIOBase") -> "Tied":
+    parse_ch(input, "-")
+    return Tied()
+
+
+def parse_aao(input: "TextIOBase") -> "AAO":
     alpha = parse_alpha(input)
     accid = parse_accid(input)
     octav = parse_octav(input)
-    return {"alpha": alpha, "accid": accid, "octav": octav}
+    return AAO(alpha=alpha, accid=accid, octav=octav)
 
 
-def parse_mod(input):
+def parse_mod(input: "TextIOBase") -> "Mode":
     lft = parse_sao(input)
     parse_ch(input, "=")
     rgt = parse_aao(input)
-    return {"lft": lft, "rgt": rgt}
+    return Mode(lft=lft, rgt=rgt)
 
 
-def parse_mtr(input):
+def parse_mtr(input: "TextIOBase") -> "Metre":
     n = parse_positive(input)
     parse_ch(input, "/")
     d = parse_positive(input)
-    return {"n": n, "d": d}
+    return Metre(n=n, d=d)
 
 
-def parse_bmp(input):
+def parse_bmp(input: "TextIOBase") -> "int":
     return parse_positive(input)
 
 
-def parse_accid(input):
+def parse_accid(input: "TextIOBase") -> "int | None":
     told = input.tell()
     try:
         parse_ch(input, "@")
@@ -254,7 +368,7 @@ def parse_accid(input):
     return None
 
 
-def parse_octav(input):
+def parse_octav(input: "TextIOBase") -> "int":
     told = input.tell()
     try:
         parse_ch(input, "'")
@@ -287,7 +401,7 @@ def parse_octav(input):
     return 0
 
 
-def parse_time(input):
+def parse_time(input: "TextIOBase") -> "Time":
     und = 0
     while True:
         told = input.tell()
@@ -306,13 +420,15 @@ def parse_time(input):
         except ParserError:
             input.seek(told)
             break
-    return {"und": und, "dot": dot}
+    return Time(und=und, dot=dot)
 
 
-def parse_positive(input):
+def parse_positive(input: "TextIOBase") -> "int":
     parse_ws(input)
+    told = input.tell()
     char = input.read(1)
     if char not in {"1", "2", "3", "4", "5", "6", "7", "8", "9"}:
+        input.seek(told)
         raise ParserError(input, "Expected a positive integer")
     num = char
     while True:
@@ -322,41 +438,60 @@ def parse_positive(input):
             input.seek(told)
             break
         num += char
-    return num
+    return int(num)
 
 
-def parse_alpha(input):
+def parse_alpha(input: "TextIOBase") -> "str":
     parse_ws(input)
-    char = input.read(1)
-    if char not in {"C", "D", "E", "F", "G", "A", "B"}:
+    told = input.tell()
+    read = input.read(1)
+    if read not in {"C", "D", "E", "F", "G", "A", "B"}:
+        input.seek(told)
         raise ParserError(input, "Expected A-G")
-    return char
+    return read
 
 
-def parse_solfa(input):
+def parse_solfa(input: "TextIOBase") -> "str":
     parse_ws(input)
-    char = input.read(1)
-    if char not in {"1", "2", "3", "4", "5", "6", "7"}:
+    told = input.tell()
+    read = input.read(1)
+    if read not in {"1", "2", "3", "4", "5", "6", "7"}:
+        input.seek(told)
         raise ParserError(input, "Expected 1-7")
-    return char
+    return read
 
 
-def parse_eof(input):
+def parse_ch(input: "TextIOBase", char) -> "None":
     parse_ws(input)
-    if input.read(1):
-        raise ParserError(input, "Expected end of file")
-
-
-def parse_ch(input, char):
-    parse_ws(input)
-    if input.read(1) != char:
+    told = input.tell()
+    read = input.read(1)
+    if read != char:
+        input.seek(told)
         raise ParserError(input, f"Expected {char}")
 
 
-def parse_ws(input):
+def parse_eof(input: "TextIOBase") -> "None":
+    parse_ws(input)
+    told = input.tell()
+    read = input.read(1)
+    if read:
+        input.seek(told)
+        raise ParserError(input, "Expected end of file")
+
+
+def parse_ws(input: "TextIOBase") -> "None":
     while True:
         told = input.tell()
         char = input.read(1)
         if not char.isspace():
             input.seek(told)
             break
+
+
+def try_parse(input: "TextIOBase", parse):
+    told = input.tell()
+    try:
+        return parse(told)
+    except ParserError:
+        input.seek(told)
+        return None

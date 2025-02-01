@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
-
 import argparse
 import sys
 import wave
 from fractions import Fraction
-from parser import parse_music
+from dataclasses import dataclass
 
 import numpy as np
 import pyaudio
-from piano import Piano
 
+from parser import parse_music, Music, Element, TimedNote, Braced, Angled, Rated, Rest, Tied, SAO
+from piano import Piano
 
 Solfa = {
     "1":  0,
@@ -21,6 +21,7 @@ Solfa = {
     "6":  9,
     "7": 11,
 }
+
 Alpha = {
     "A":  9,
     "B": 11,
@@ -32,71 +33,76 @@ Alpha = {
 }
 
 
-def flatten(music, output=sys.stdout):
+@dataclass
+class Tone:
+    pitch: "float"
+    secs: "float" = 0.0
+
+
+def flatten(music: "Music", output=sys.stderr) -> "list[Tone]":
     unordered = {}
     i = 0
-    for group in music["groups"]:
-        mod = group["mod"]
-        lft = mod["lft"]
-        lft = Solfa[lft["solfa"]] + (lft["accid"] if lft.get("accid") is not None else 0) + lft["octav"] * 12
-        rgt = mod["rgt"]
-        rgt = Alpha[rgt["alpha"]] + (rgt["accid"] if rgt.get("accid") is not None else 0) + rgt["octav"] * 12
+    for group in music.groups:
+        mod = group.mod
+        lft = mod.lft
+        lft = Solfa[lft.solfa] + (lft.accid if lft.accid is not None else 0) + lft.octav * 12
+        rgt = mod.rgt
+        rgt = Alpha[rgt.alpha] + (rgt.accid if rgt.accid is not None else 0) + rgt.octav * 12
         mod = rgt - lft
-        bmp = group["bmp"]
-        bmp = int(bmp)
-        mtr = group["mtr"]
-        mtn = int(mtr["n"])
-        mtd = int(mtr["d"])
+        bmp = group.bmp
+        mtr = group.mtr
+        mtn = mtr.n
+        mtd = mtr.d
         mtr = Fraction(mtn, mtd)
-        for passage in group["passages"]:
+        for passage in group.passages:
             i += 1
-            unordered[i] = []
+            curr = []
             j = 0
-            for measure in passage["measures"]:
+            for measure in passage.measures:
                 j += 1
                 Accid = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0}
                 ctr = Fraction(0)
 
-                def visit(element, base=Fraction(1, 4)):
+                def visit(element: Element, base=Fraction(1, 4)):
                     nonlocal ctr
-                    if element.get("note") is not None:
-                        note = element["note"]
-                        if note.get("solfa") is not None:
-                            if note.get("accid") is not None:
-                                Accid[note["solfa"]] = note["accid"]
-                            note = Solfa[note["solfa"]] + Accid[note["solfa"]] + note["octav"] * 12
-                            unordered[i].append([mod + note, 0])
-                        elif note.get("rest") is not None:
-                            unordered[i].append([-np.inf, 0])
-                        elif len(unordered[i]) == 0:
+                    if isinstance(element, TimedNote):
+                        note = element.note
+                        if isinstance(note, SAO):
+                            if note.accid is not None:
+                                Accid[note.solfa] = note.accid
+                            note = Solfa[note.solfa] + Accid[note.solfa] + note.octav * 12
+                            curr.append(Tone(pitch=mod + note))
+                        elif isinstance(note, Rest):
+                            curr.append(Tone(pitch=-np.inf))
+                        elif isinstance(note, Tied) and len(curr) == 0:
                             output.write(f"Warning: A tied note is found at the beginning of Passage {i}, which is considered as a rest\n")
-                            unordered[i].append([-np.inf, 0])
-                        time = element["time"]
-                        time = Fraction(1, 2 ** time["und"]) * (2 - Fraction(1, 2 ** time["dot"]))
+                            curr.append(Tone(pitch=-np.inf))
+                        time = element.time
+                        time = Fraction(1, 2 ** time.und) * (2 - Fraction(1, 2 ** time.dot))
                         time = time * base
-                        unordered[i][-1][1] += time * 60 * mtd / bmp
+                        curr[-1].secs += time * 60 * mtd / bmp
                         ctr += time
                     else:
-                        if element.get("rat") is not None:
-                            rat = element["rat"]
-                            rtn = int(rat["n"])
-                            rtd = int(rat["d"]) if rat.get("d") is not None else 2 ** (rtn.bit_length() - 1)
+                        if isinstance(element, Rated):
+                            rat = element.ratio
+                            rtn = rat.n
+                            rtd = rat.d if rat.d is not None else 2 ** (rtn.bit_length() - 1)
                             rat = Fraction(rtn, rtd)
-                            base /= rat
-                        if element.get("angled") is not None:
-                            base /= 2
-                            braced = element["angled"]
-                        else:
-                            braced = element["braced"]
-                        for element in braced["elements"]:
-                            visit(element, base)
+                            visit(element.inner, base / rat)
+                        elif isinstance(element, Angled):
+                            for element in element.inners:
+                                visit(element, base / 2)
+                        elif isinstance(element, Braced):
+                            for element in element.inners:
+                                visit(element, base)
 
-                for element in measure["elements"]:
+                for element in measure.elements:
                     visit(element)
+                unordered[i] = curr
                 if ctr != mtr:
                     output.write(f"Warning: Passage {i}, Measure {j} has wrong time signature, expected {mtr}, got {ctr}\n")
-    if music.get("order") is not None:
-        nums = [int(num) for num in music["order"]]
+    if music.order is not None:
+        nums = music.order
     else:
         nums = unordered.keys()
     tones = []
@@ -120,10 +126,10 @@ funcs = {
 }
 
 
-def gen_wave(h, d, func, attack, decay, volume, sr, sw):
-    fw = np.linspace(0, d, int(sr * d))
-    bw = np.linspace(d, 0, int(sr * d))
-    data = func(fw, 440 * 2 ** ((h - 9) / 12)) * np.fmin(np.fmin(fw / attack, bw / decay), 1.0) * volume
+def gen_wave(tone, func, attack, decay, volume, sr, sw):
+    fw = np.linspace(0, tone.secs, int(sr * tone.secs))
+    bw = np.linspace(tone.secs, 0, int(sr * tone.secs))
+    data = func(fw, 440 * 2 ** ((tone.pitch - 9) / 12)) * np.fmin(np.fmin(fw / attack, bw / decay), 1.0) * volume
     return np.int16(data * 32767) if sw == 2 else np.uint8(data * 127 + 128)
 
 
@@ -132,17 +138,17 @@ def save(tones, func, sr, sw, attack, decay, volume, output):
         file.setnchannels(1)
         file.setsampwidth(sw)
         file.setframerate(sr)
-        for h, d in tones:
-            file.writeframes(gen_wave(h, d, func, attack, decay, volume, sr, sw).tobytes())
+        for tone in tones:
+            file.writeframes(gen_wave(tone, func, attack, decay, volume, sr, sw).tobytes())
 
 
 def play(tones, func, sr, sw, attack, decay, volume, output=sys.stdout):
     pa = pyaudio.PyAudio()
     stream = pa.open(format=pa.get_format_from_width(sw), channels=1, rate=sr, output=True)
     with Piano(output) as gui:
-        for h, d in tones:
-            gui.show(h)
-            stream.write(gen_wave(h, d, func, attack, decay, volume, sr, sw).tobytes())
+        for tone in tones:
+            gui.show(tone.pitch)
+            stream.write(gen_wave(tone, func, attack, decay, volume, sr, sw).tobytes())
             gui.show(-np.inf)
     stream.stop_stream()
     stream.close()
