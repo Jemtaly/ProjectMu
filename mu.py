@@ -12,7 +12,7 @@ import pyaudio
 from parser import parse_music, Music, Element, TimedNote, Braced, Angled, Rated, Rest, Tied, SAO
 from piano import Piano
 
-Solfa = {
+SOLFA = {
     "1":  0,
     "2":  2,
     "3":  4,
@@ -22,7 +22,7 @@ Solfa = {
     "7": 11,
 }
 
-Alpha = {
+ALPHA = {
     "A":  9,
     "B": 11,
     "C": 12,
@@ -43,11 +43,10 @@ def flatten(music: "Music", output=sys.stderr) -> "list[Tone]":
     unordered = {}
     i = 0
     for group in music.groups:
-        mod = group.mod
-        lft = mod.lft
-        lft = Solfa[lft.solfa] + (lft.accid if lft.accid is not None else 0) + lft.octav * 12
-        rgt = mod.rgt
-        rgt = Alpha[rgt.alpha] + (rgt.accid if rgt.accid is not None else 0) + rgt.octav * 12
+        lft = group.mod.lft
+        lft = SOLFA[lft.solfa] + (lft.accid if lft.accid is not None else 0) + lft.octav * 12
+        rgt = group.mod.rgt
+        rgt = ALPHA[rgt.alpha] + (rgt.accid if rgt.accid is not None else 0) + rgt.octav * 12
         mod = rgt - lft
         bmp = group.bmp
         mtr = group.mtr
@@ -70,7 +69,7 @@ def flatten(music: "Music", output=sys.stderr) -> "list[Tone]":
                         if isinstance(note, SAO):
                             if note.accid is not None:
                                 Accid[note.solfa] = note.accid
-                            note = Solfa[note.solfa] + Accid[note.solfa] + note.octav * 12
+                            note = SOLFA[note.solfa] + Accid[note.solfa] + note.octav * 12
                             curr.append(Tone(pitch=mod + note))
                         elif isinstance(note, Rest):
                             curr.append(Tone(pitch=-np.inf))
@@ -101,8 +100,8 @@ def flatten(music: "Music", output=sys.stderr) -> "list[Tone]":
                 unordered[i] = curr
                 if ctr != mtr:
                     output.write(f"Warning: Passage {i}, Measure {j} has wrong time signature, expected {mtr}, got {ctr}\n")
-    if music.order is not None:
-        nums = music.order
+    if music.final is not None:
+        nums = music.final
     else:
         nums = unordered.keys()
     tones = []

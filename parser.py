@@ -3,10 +3,10 @@ from dataclasses import dataclass
 
 
 class ParserError(Exception):
-    def __init__(self, input: "TextIOBase", message: "str"):
-        told = input.tell()
-        input.seek(0)
-        prev = input.read(told)
+    def __init__(self, buff: "TextIOBase", message: "str"):
+        told = buff.tell()
+        buff.seek(0)
+        prev = buff.read(told)
         prev = prev.split("\n")
         last = prev.pop()
         self.lineno = len(prev) + 1
@@ -20,7 +20,7 @@ class ParserError(Exception):
 @dataclass
 class Music:
     groups: "list[Group]"
-    order: "list[int] | None"
+    final: "list[int] | None"
 
 
 @dataclass
@@ -117,381 +117,375 @@ class Time:
     dot: "int"
 
 
-def parse_music(input: "TextIOBase") -> "Music":
-    groups = [parse_group(input)]
+def parse_music(buff: "TextIOBase") -> "Music":
+    groups = [parse_group(buff)]
     while True:
-        told = input.tell()
+        told = buff.tell()
         try:
-            parse_ch(input, ";")
-            groups.append(parse_group(input))
+            parse_ch(buff, ";")
+            groups.append(parse_group(buff))
         except ParserError:
-            input.seek(told)
+            buff.seek(told)
             break
-    order = parse_order(input)
-    parse_eof(input)
-    return Music(groups=groups, order=order)
+    final = parse_final(buff)
+    parse_eof(buff)
+    return Music(groups=groups, final=final)
 
 
-def parse_order(input: "TextIOBase") -> "list[int] | None":
-    told = input.tell()
-    try:
-        parse_ch(input, "|")
-        return None
-    except ParserError:
-        input.seek(told)
-    try:
-        parse_ch(input, ":")
-        nums = []
-        while True:
-            told = input.tell()
-            try:
-                nums.append(parse_positive(input))
-            except ParserError:
-                input.seek(told)
-                break
-        return nums
-    except ParserError:
-        input.seek(told)
-    raise ParserError(input, "Expected order")
-
-
-def parse_group(input: "TextIOBase") -> "Group":
-    mod = parse_mod(input)
-    mtr = parse_mtr(input)
-    bmp = parse_bmp(input)
-    passages = [parse_passage(input)]
+def parse_group(buff: "TextIOBase") -> "Group":
+    mod = parse_mod(buff)
+    mtr = parse_mtr(buff)
+    bmp = parse_bmp(buff)
+    passages = [parse_passage(buff)]
     while True:
-        told = input.tell()
+        told = buff.tell()
         try:
-            parse_ch(input, ",")
-            passages.append(parse_passage(input))
+            parse_ch(buff, ",")
+            passages.append(parse_passage(buff))
         except ParserError:
-            input.seek(told)
+            buff.seek(told)
             break
     return Group(mod=mod, mtr=mtr, bmp=bmp, passages=passages)
 
 
-def parse_passage(input: "TextIOBase") -> "Passage":
-    measures = [parse_measure(input)]
+def parse_passage(buff: "TextIOBase") -> "Passage":
+    measures = [parse_measure(buff)]
     while True:
-        told = input.tell()
+        told = buff.tell()
         try:
-            measures.append(parse_measure(input))
+            measures.append(parse_measure(buff))
         except ParserError:
-            input.seek(told)
+            buff.seek(told)
             break
     return Passage(measures=measures)
 
 
-def parse_measure(input: "TextIOBase") -> "Measure":
-    elements = [parse_element(input)]
+def parse_measure(buff: "TextIOBase") -> "Measure":
+    elements = [parse_element(buff)]
     while True:
-        told = input.tell()
+        told = buff.tell()
         try:
-            elements.append(parse_element(input))
+            elements.append(parse_element(buff))
         except ParserError:
-            input.seek(told)
+            buff.seek(told)
             break
-    parse_ch(input, "|")
+    parse_ch(buff, "|")
     return Measure(elements=elements)
 
 
-def parse_element(input: "TextIOBase") -> "Element":
-    told = input.tell()
+def parse_element(buff: "TextIOBase") -> "Element":
+    told = buff.tell()
     try:
-        return parse_timed_note(input)
+        return parse_timed_note(buff)
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     try:
-        return parse_braced(input)
+        return parse_braced(buff)
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     try:
-        return parse_angled(input)
+        return parse_angled(buff)
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     try:
-        return parse_rated(input)
+        return parse_rated(buff)
     except ParserError:
-        input.seek(told)
-    raise ParserError(input, "Expected element")
+        buff.seek(told)
+    raise ParserError(buff, "Expected element")
 
 
-def parse_timed_note(input: "TextIOBase") -> "TimedNote":
-    note = parse_note(input)
-    time = parse_time(input)
+def parse_timed_note(buff: "TextIOBase") -> "TimedNote":
+    note = parse_note(buff)
+    time = parse_time(buff)
     return TimedNote(note=note, time=time)
 
 
-def parse_braced(input: "TextIOBase") -> "Braced":
-    parse_ch(input, "{")
+def parse_braced(buff: "TextIOBase") -> "Braced":
+    parse_ch(buff, "{")
     elements = []
     while True:
-        told = input.tell()
+        told = buff.tell()
         try:
-            elements.append(parse_element(input))
+            elements.append(parse_element(buff))
         except ParserError:
-            input.seek(told)
+            buff.seek(told)
             break
-    parse_ch(input, "}")
+    parse_ch(buff, "}")
     return Braced(inners=elements)
 
 
-def parse_angled(input: "TextIOBase") -> "Angled":
-    parse_ch(input, "<")
+def parse_angled(buff: "TextIOBase") -> "Angled":
+    parse_ch(buff, "<")
     elements = []
     while True:
-        told = input.tell()
+        told = buff.tell()
         try:
-            elements.append(parse_element(input))
+            elements.append(parse_element(buff))
         except ParserError:
-            input.seek(told)
+            buff.seek(told)
             break
-    parse_ch(input, ">")
+    parse_ch(buff, ">")
     return Angled(inners=elements)
 
 
-def parse_rated(input: "TextIOBase") -> "Rated":
-    rat = parse_rat(input)
-    inner = parse_element(input)
+def parse_rated(buff: "TextIOBase") -> "Rated":
+    rat = parse_rat(buff)
+    inner = parse_element(buff)
     return Rated(ratio=rat, inner=inner)
 
 
-def parse_rat(input: "TextIOBase") -> "Ratio":
-    parse_ch(input, "[")
-    n = parse_positive(input)
-    told = input.tell()
+def parse_rat(buff: "TextIOBase") -> "Ratio":
+    parse_ch(buff, "[")
+    n = parse_positive(buff)
+    told = buff.tell()
     try:
-        parse_ch(input, ":")
-        d = parse_positive(input)
+        parse_ch(buff, ":")
+        d = parse_positive(buff)
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
         d = None
-    parse_ch(input, "]")
+    parse_ch(buff, "]")
     return Ratio(n=n, d=d)
 
 
-def parse_note(input: "TextIOBase") -> "Note":
-    told = input.tell()
+def parse_note(buff: "TextIOBase") -> "Note":
+    told = buff.tell()
     try:
-        return parse_sao(input)
+        return parse_sao(buff)
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     try:
-        return parse_rest(input)
+        return parse_rest(buff)
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     try:
-        return parse_tied(input)
+        return parse_tied(buff)
     except ParserError:
-        input.seek(told)
-    raise ParserError(input, "Expected note")
+        buff.seek(told)
+    raise ParserError(buff, "Expected note")
 
 
-def parse_sao(input: "TextIOBase") -> "SAO":
-    accid = parse_accid(input)
-    solfa = parse_solfa(input)
-    octav = parse_octav(input)
+def parse_sao(buff: "TextIOBase") -> "SAO":
+    accid = parse_accid(buff)
+    solfa = parse_solfa(buff)
+    octav = parse_octav(buff)
     return SAO(solfa=solfa, accid=accid, octav=octav)
 
 
-def parse_rest(input: "TextIOBase") -> "Rest":
-    parse_ch(input, "0")
+def parse_rest(buff: "TextIOBase") -> "Rest":
+    parse_ch(buff, "0")
     return Rest()
 
 
-def parse_tied(input: "TextIOBase") -> "Tied":
-    parse_ch(input, "-")
+def parse_tied(buff: "TextIOBase") -> "Tied":
+    parse_ch(buff, "-")
     return Tied()
 
 
-def parse_aao(input: "TextIOBase") -> "AAO":
-    alpha = parse_alpha(input)
-    accid = parse_accid(input)
-    octav = parse_octav(input)
+def parse_aao(buff: "TextIOBase") -> "AAO":
+    alpha = parse_alpha(buff)
+    accid = parse_accid(buff)
+    octav = parse_octav(buff)
     return AAO(alpha=alpha, accid=accid, octav=octav)
 
 
-def parse_mod(input: "TextIOBase") -> "Mode":
-    lft = parse_sao(input)
-    parse_ch(input, "=")
-    rgt = parse_aao(input)
+def parse_mod(buff: "TextIOBase") -> "Mode":
+    lft = parse_sao(buff)
+    parse_ch(buff, "=")
+    rgt = parse_aao(buff)
     return Mode(lft=lft, rgt=rgt)
 
 
-def parse_mtr(input: "TextIOBase") -> "Metre":
-    n = parse_positive(input)
-    parse_ch(input, "/")
-    d = parse_positive(input)
+def parse_mtr(buff: "TextIOBase") -> "Metre":
+    n = parse_positive(buff)
+    parse_ch(buff, "/")
+    d = parse_positive(buff)
     return Metre(n=n, d=d)
 
 
-def parse_bmp(input: "TextIOBase") -> "int":
-    return parse_positive(input)
+def parse_bmp(buff: "TextIOBase") -> "int":
+    return parse_positive(buff)
 
 
-def parse_accid(input: "TextIOBase") -> "int | None":
-    told = input.tell()
+def parse_accid(buff: "TextIOBase") -> "int | None":
+    told = buff.tell()
     try:
-        parse_ch(input, "@")
+        parse_ch(buff, "@")
         return 0
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     try:
-        parse_ch(input, "#")
+        parse_ch(buff, "#")
         i = +1
         while True:
-            told = input.tell()
+            told = buff.tell()
             try:
-                parse_ch(input, "#")
+                parse_ch(buff, "#")
                 i += 1
             except ParserError:
-                input.seek(told)
+                buff.seek(told)
                 break
         return i
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     try:
-        parse_ch(input, "b")
+        parse_ch(buff, "b")
         i = -1
         while True:
-            told = input.tell()
+            told = buff.tell()
             try:
-                parse_ch(input, "b")
+                parse_ch(buff, "b")
                 i -= 1
             except ParserError:
-                input.seek(told)
+                buff.seek(told)
                 break
         return i
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     return None
 
 
-def parse_octav(input: "TextIOBase") -> "int":
-    told = input.tell()
+def parse_octav(buff: "TextIOBase") -> "int":
+    told = buff.tell()
     try:
-        parse_ch(input, "'")
+        parse_ch(buff, "'")
         i = +1
         while True:
-            told = input.tell()
+            told = buff.tell()
             try:
-                parse_ch(input, "'")
+                parse_ch(buff, "'")
                 i += 1
             except ParserError:
-                input.seek(told)
+                buff.seek(told)
                 break
         return i
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     try:
-        parse_ch(input, ",")
+        parse_ch(buff, ",")
         i = -1
         while True:
-            told = input.tell()
+            told = buff.tell()
             try:
-                parse_ch(input, ",")
+                parse_ch(buff, ",")
                 i -= 1
             except ParserError:
-                input.seek(told)
+                buff.seek(told)
                 break
         return i
     except ParserError:
-        input.seek(told)
+        buff.seek(told)
     return 0
 
 
-def parse_time(input: "TextIOBase") -> "Time":
+def parse_time(buff: "TextIOBase") -> "Time":
     und = 0
     while True:
-        told = input.tell()
+        told = buff.tell()
         try:
-            parse_ch(input, "/")
+            parse_ch(buff, "/")
             und += 1
         except ParserError:
-            input.seek(told)
+            buff.seek(told)
             break
     dot = 0
     while True:
-        told = input.tell()
+        told = buff.tell()
         try:
-            parse_ch(input, ".")
+            parse_ch(buff, ".")
             dot += 1
         except ParserError:
-            input.seek(told)
+            buff.seek(told)
             break
     return Time(und=und, dot=dot)
 
 
-def parse_positive(input: "TextIOBase") -> "int":
-    parse_ws(input)
-    told = input.tell()
-    char = input.read(1)
+def parse_final(buff: "TextIOBase") -> "list[int] | None":
+    told = buff.tell()
+    try:
+        return parse_ch(buff, "|")
+    except ParserError:
+        buff.seek(told)
+    try:
+        return parse_order(buff)
+    except ParserError:
+        buff.seek(told)
+    raise ParserError(buff, "Expected order")
+
+
+def parse_order(buff: "TextIOBase") -> "list[int]":
+    parse_ch(buff, ":")
+    nums = []
+    while True:
+        told = buff.tell()
+        try:
+            nums.append(parse_positive(buff))
+        except ParserError:
+            buff.seek(told)
+            break
+    return nums
+
+
+def parse_positive(buff: "TextIOBase") -> "int":
+    parse_ws(buff)
+    told = buff.tell()
+    char = buff.read(1)
     if char not in {"1", "2", "3", "4", "5", "6", "7", "8", "9"}:
-        input.seek(told)
-        raise ParserError(input, "Expected a positive integer")
+        buff.seek(told)
+        raise ParserError(buff, "Expected a positive integer")
     num = char
     while True:
-        told = input.tell()
-        char = input.read(1)
+        told = buff.tell()
+        char = buff.read(1)
         if char not in {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}:
-            input.seek(told)
+            buff.seek(told)
             break
         num += char
     return int(num)
 
 
-def parse_alpha(input: "TextIOBase") -> "str":
-    parse_ws(input)
-    told = input.tell()
-    read = input.read(1)
+def parse_alpha(buff: "TextIOBase") -> "str":
+    parse_ws(buff)
+    told = buff.tell()
+    read = buff.read(1)
     if read not in {"C", "D", "E", "F", "G", "A", "B"}:
-        input.seek(told)
-        raise ParserError(input, "Expected A-G")
+        buff.seek(told)
+        raise ParserError(buff, "Expected A-G")
     return read
 
 
-def parse_solfa(input: "TextIOBase") -> "str":
-    parse_ws(input)
-    told = input.tell()
-    read = input.read(1)
+def parse_solfa(buff: "TextIOBase") -> "str":
+    parse_ws(buff)
+    told = buff.tell()
+    read = buff.read(1)
     if read not in {"1", "2", "3", "4", "5", "6", "7"}:
-        input.seek(told)
-        raise ParserError(input, "Expected 1-7")
+        buff.seek(told)
+        raise ParserError(buff, "Expected 1-7")
     return read
 
 
-def parse_ch(input: "TextIOBase", char) -> "None":
-    parse_ws(input)
-    told = input.tell()
-    read = input.read(1)
+def parse_ch(buff: "TextIOBase", char) -> "None":
+    parse_ws(buff)
+    told = buff.tell()
+    read = buff.read(1)
     if read != char:
-        input.seek(told)
-        raise ParserError(input, f"Expected {char}")
+        buff.seek(told)
+        raise ParserError(buff, f"Expected {char}")
 
 
-def parse_eof(input: "TextIOBase") -> "None":
-    parse_ws(input)
-    told = input.tell()
-    read = input.read(1)
+def parse_eof(buff: "TextIOBase") -> "None":
+    parse_ws(buff)
+    told = buff.tell()
+    read = buff.read(1)
     if read:
-        input.seek(told)
-        raise ParserError(input, "Expected end of file")
+        buff.seek(told)
+        raise ParserError(buff, "Expected end of file")
 
 
-def parse_ws(input: "TextIOBase") -> "None":
+def parse_ws(buff: "TextIOBase") -> "None":
     while True:
-        told = input.tell()
-        char = input.read(1)
+        told = buff.tell()
+        char = buff.read(1)
         if not char.isspace():
-            input.seek(told)
+            buff.seek(told)
             break
-
-
-def try_parse(input: "TextIOBase", parse):
-    told = input.tell()
-    try:
-        return parse(told)
-    except ParserError:
-        input.seek(told)
-        return None
