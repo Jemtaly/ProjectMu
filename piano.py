@@ -1,3 +1,6 @@
+from typing import TextIO
+
+
 wdct = {0: 0, 1: 2, 2: 4, 3: 5, 4: 7, 5: 9, 6: 11}
 bdct = {0: 1, 1: 3, 3: 6, 4: 8, 5: 10}
 wlst = [None if i % 7 not in wdct else wdct[i % 7] + i // 7 * 12 for i in range(-23, 29)]
@@ -5,7 +8,7 @@ blst = [None if i % 7 not in bdct else bdct[i % 7] + i // 7 * 12 for i in range(
 
 
 class Piano:
-    def __init__(self, output, W=2, B=1, U=2, D=3, T=0, L=0):
+    def __init__(self, output: TextIO, W=2, B=1, U=2, D=3, T=0, L=0):
         self.args = W, B, U, D, T, L
         self.output = output
 

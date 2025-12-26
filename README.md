@@ -7,7 +7,7 @@ ProjectMu is a tool for generating audio files in .wav format from numbered musi
 ## 使用方法
 
 ```
-usage: mu.py [-h] [-o OUTPUT] [-t {sn,pl,sq,tr,st}]
+usage: cli.py [-h] [-o OUTPUT] [-t {sn,pl,sq,tr,st}]
              [-r SAMPLE_RATE] [-w {1,2}] [-a ATTACK] [-d DECAY]
              [-v VOLUME]
              filename

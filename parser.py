@@ -1,9 +1,10 @@
 from io import TextIOBase
-from dataclasses import dataclass
+
+from .core import *
 
 
 class ParserError(Exception):
-    def __init__(self, buff: "TextIOBase", message: "str"):
+    def __init__(self, buff: TextIOBase, message: str):
         told = buff.tell()
         buff.seek(0)
         prev = buff.read(told)
@@ -17,107 +18,7 @@ class ParserError(Exception):
         return f"{self.message} at line {self.lineno} column {self.colno}"
 
 
-@dataclass
-class Music:
-    groups: "list[Group]"
-    final: "list[int] | None"
-
-
-@dataclass
-class Group:
-    mod: "Mode"
-    mtr: "Metre"
-    bmp: "int"
-    passages: "list[Passage]"
-
-
-@dataclass
-class Passage:
-    measures: "list[Measure]"
-
-
-@dataclass
-class Measure:
-    elements: "list[Element]"
-
-
-@dataclass
-class TimedNote:
-    note: "Note"
-    time: "Time"
-
-
-@dataclass
-class Braced:
-    inners: "list[Element]"
-
-
-@dataclass
-class Angled:
-    inners: "list[Element]"
-
-
-@dataclass
-class Rated:
-    ratio: "Ratio"
-    inner: "Element"
-
-
-Element = TimedNote | Braced | Angled | Rated
-
-
-@dataclass
-class Ratio:
-    n: "int"
-    d: "int | None"
-
-
-@dataclass
-class Rest:
-    pass
-
-
-@dataclass
-class Tied:
-    pass
-
-
-@dataclass
-class SAO:
-    solfa: "str"
-    accid: "int | None"
-    octav: "int"
-
-
-Note = Rest | Tied | SAO
-
-
-@dataclass
-class AAO:
-    alpha: "str"
-    accid: "int | None"
-    octav: "int"
-
-
-@dataclass
-class Mode:
-    lft: "SAO"
-    rgt: "AAO"
-
-
-@dataclass
-class Metre:
-    n: "int"
-    d: "int"
-
-
-@dataclass
-class Time:
-    und: "int"
-    dot: "int"
-
-
-def parse_music(buff: "TextIOBase") -> "Music":
+def parse_music(buff: TextIOBase) -> Music:
     groups = [parse_group(buff)]
     while True:
         told = buff.tell()
@@ -132,7 +33,7 @@ def parse_music(buff: "TextIOBase") -> "Music":
     return Music(groups=groups, final=final)
 
 
-def parse_group(buff: "TextIOBase") -> "Group":
+def parse_group(buff: TextIOBase) -> Group:
     mod = parse_mod(buff)
     mtr = parse_mtr(buff)
     bmp = parse_bmp(buff)
@@ -148,7 +49,7 @@ def parse_group(buff: "TextIOBase") -> "Group":
     return Group(mod=mod, mtr=mtr, bmp=bmp, passages=passages)
 
 
-def parse_passage(buff: "TextIOBase") -> "Passage":
+def parse_passage(buff: TextIOBase) -> Passage:
     measures = [parse_measure(buff)]
     while True:
         told = buff.tell()
@@ -160,7 +61,7 @@ def parse_passage(buff: "TextIOBase") -> "Passage":
     return Passage(measures=measures)
 
 
-def parse_measure(buff: "TextIOBase") -> "Measure":
+def parse_measure(buff: TextIOBase) -> Measure:
     elements = [parse_element(buff)]
     while True:
         told = buff.tell()
@@ -173,7 +74,7 @@ def parse_measure(buff: "TextIOBase") -> "Measure":
     return Measure(elements=elements)
 
 
-def parse_element(buff: "TextIOBase") -> "Element":
+def parse_element(buff: TextIOBase) -> Element:
     told = buff.tell()
     try:
         return parse_timed_note(buff)
@@ -194,13 +95,13 @@ def parse_element(buff: "TextIOBase") -> "Element":
     raise ParserError(buff, "Expected element")
 
 
-def parse_timed_note(buff: "TextIOBase") -> "TimedNote":
+def parse_timed_note(buff: TextIOBase) -> TimedNote:
     note = parse_note(buff)
     time = parse_time(buff)
     return TimedNote(note=note, time=time)
 
 
-def parse_braced(buff: "TextIOBase") -> "Braced":
+def parse_braced(buff: TextIOBase) -> Braced:
     parse_ch(buff, "{")
     elements = []
     while True:
@@ -214,7 +115,7 @@ def parse_braced(buff: "TextIOBase") -> "Braced":
     return Braced(inners=elements)
 
 
-def parse_angled(buff: "TextIOBase") -> "Angled":
+def parse_angled(buff: TextIOBase) -> Angled:
     parse_ch(buff, "<")
     elements = []
     while True:
@@ -228,13 +129,13 @@ def parse_angled(buff: "TextIOBase") -> "Angled":
     return Angled(inners=elements)
 
 
-def parse_rated(buff: "TextIOBase") -> "Rated":
+def parse_rated(buff: TextIOBase) -> Rated:
     rat = parse_rat(buff)
     inner = parse_element(buff)
     return Rated(ratio=rat, inner=inner)
 
 
-def parse_rat(buff: "TextIOBase") -> "Ratio":
+def parse_rat(buff: TextIOBase) -> Ratio:
     parse_ch(buff, "[")
     n = parse_positive(buff)
     told = buff.tell()
@@ -248,7 +149,7 @@ def parse_rat(buff: "TextIOBase") -> "Ratio":
     return Ratio(n=n, d=d)
 
 
-def parse_note(buff: "TextIOBase") -> "Note":
+def parse_note(buff: TextIOBase) -> Note:
     told = buff.tell()
     try:
         return parse_sao(buff)
@@ -265,49 +166,49 @@ def parse_note(buff: "TextIOBase") -> "Note":
     raise ParserError(buff, "Expected note")
 
 
-def parse_sao(buff: "TextIOBase") -> "SAO":
+def parse_sao(buff: TextIOBase) -> SAO:
     accid = parse_accid(buff)
     solfa = parse_solfa(buff)
     octav = parse_octav(buff)
     return SAO(solfa=solfa, accid=accid, octav=octav)
 
 
-def parse_rest(buff: "TextIOBase") -> "Rest":
+def parse_rest(buff: TextIOBase) -> Rest:
     parse_ch(buff, "0")
     return Rest()
 
 
-def parse_tied(buff: "TextIOBase") -> "Tied":
+def parse_tied(buff: TextIOBase) -> Tied:
     parse_ch(buff, "-")
     return Tied()
 
 
-def parse_aao(buff: "TextIOBase") -> "AAO":
+def parse_aao(buff: TextIOBase) -> AAO:
     alpha = parse_alpha(buff)
     accid = parse_accid(buff)
     octav = parse_octav(buff)
     return AAO(alpha=alpha, accid=accid, octav=octav)
 
 
-def parse_mod(buff: "TextIOBase") -> "Mode":
+def parse_mod(buff: TextIOBase) -> Mode:
     lft = parse_sao(buff)
     parse_ch(buff, "=")
     rgt = parse_aao(buff)
     return Mode(lft=lft, rgt=rgt)
 
 
-def parse_mtr(buff: "TextIOBase") -> "Metre":
+def parse_mtr(buff: TextIOBase) -> Metre:
     n = parse_positive(buff)
     parse_ch(buff, "/")
     d = parse_positive(buff)
     return Metre(n=n, d=d)
 
 
-def parse_bmp(buff: "TextIOBase") -> "int":
+def parse_bmp(buff: TextIOBase) -> int:
     return parse_positive(buff)
 
 
-def parse_accid(buff: "TextIOBase") -> "int | None":
+def parse_accid(buff: TextIOBase) -> int | None:
     told = buff.tell()
     try:
         parse_ch(buff, "@")
@@ -345,7 +246,7 @@ def parse_accid(buff: "TextIOBase") -> "int | None":
     return None
 
 
-def parse_octav(buff: "TextIOBase") -> "int":
+def parse_octav(buff: TextIOBase) -> int:
     told = buff.tell()
     try:
         parse_ch(buff, "'")
@@ -378,7 +279,7 @@ def parse_octav(buff: "TextIOBase") -> "int":
     return 0
 
 
-def parse_time(buff: "TextIOBase") -> "Time":
+def parse_time(buff: TextIOBase) -> Time:
     und = 0
     while True:
         told = buff.tell()
@@ -400,7 +301,7 @@ def parse_time(buff: "TextIOBase") -> "Time":
     return Time(und=und, dot=dot)
 
 
-def parse_final(buff: "TextIOBase") -> "list[int] | None":
+def parse_final(buff: TextIOBase) -> list[int] | None:
     told = buff.tell()
     try:
         return parse_ch(buff, "|")
@@ -413,7 +314,7 @@ def parse_final(buff: "TextIOBase") -> "list[int] | None":
     raise ParserError(buff, "Expected order")
 
 
-def parse_order(buff: "TextIOBase") -> "list[int]":
+def parse_order(buff: TextIOBase) -> list[int]:
     parse_ch(buff, ":")
     nums = []
     while True:
@@ -426,7 +327,7 @@ def parse_order(buff: "TextIOBase") -> "list[int]":
     return nums
 
 
-def parse_positive(buff: "TextIOBase") -> "int":
+def parse_positive(buff: TextIOBase) -> int:
     parse_ws(buff)
     told = buff.tell()
     char = buff.read(1)
@@ -444,7 +345,7 @@ def parse_positive(buff: "TextIOBase") -> "int":
     return int(num)
 
 
-def parse_alpha(buff: "TextIOBase") -> "str":
+def parse_alpha(buff: TextIOBase) -> str:
     parse_ws(buff)
     told = buff.tell()
     read = buff.read(1)
@@ -454,7 +355,7 @@ def parse_alpha(buff: "TextIOBase") -> "str":
     return read
 
 
-def parse_solfa(buff: "TextIOBase") -> "str":
+def parse_solfa(buff: TextIOBase) -> str:
     parse_ws(buff)
     told = buff.tell()
     read = buff.read(1)
@@ -464,7 +365,7 @@ def parse_solfa(buff: "TextIOBase") -> "str":
     return read
 
 
-def parse_ch(buff: "TextIOBase", char) -> "None":
+def parse_ch(buff: TextIOBase, char: str) -> None:
     parse_ws(buff)
     told = buff.tell()
     read = buff.read(1)
@@ -473,7 +374,7 @@ def parse_ch(buff: "TextIOBase", char) -> "None":
         raise ParserError(buff, f"Expected {char}")
 
 
-def parse_eof(buff: "TextIOBase") -> "None":
+def parse_eof(buff: TextIOBase) -> None:
     parse_ws(buff)
     told = buff.tell()
     read = buff.read(1)
@@ -482,7 +383,7 @@ def parse_eof(buff: "TextIOBase") -> "None":
         raise ParserError(buff, "Expected end of file")
 
 
-def parse_ws(buff: "TextIOBase") -> "None":
+def parse_ws(buff: TextIOBase) -> None:
     while True:
         told = buff.tell()
         char = buff.read(1)
