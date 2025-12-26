@@ -6,11 +6,17 @@ ProjectMu is a tool for generating audio files in .wav format from numbered musi
 
 ## 使用方法
 
+```cli
+git clone https://github.com/Jemtaly/ProjectMu
+cd ProjectMu/src
+python -m mu -h
 ```
-usage: cli.py [-h] [-o OUTPUT] [-t {sn,pl,sq,tr,st}]
-             [-r SAMPLE_RATE] [-w {1,2}] [-a ATTACK] [-d DECAY]
-             [-v VOLUME]
-             filename
+
+```
+usage: python -m mu [-h] [-o OUTPUT] [-t {sn,pl,sq,tr,st}]
+                    [-r SAMPLE_RATE] [-w {1,2}] [-a ATTACK] [-d DECAY]
+                    [-v VOLUME]
+                    filename
 
 ProjectMu - A Numbered Notation Score Compiler
 
