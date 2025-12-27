@@ -23,7 +23,7 @@ class Piano:
         self.output.write("\033[?25h")
         self.output.flush()
 
-    def show(self, h):
+    def show(self, h: int | None):
         W, B, U, D, T, L = self.args
         grid = [[[9, 9] for _ in range(W * 52 * 2)] for _ in range(max(U, D))]
         for i, v in enumerate(wlst):

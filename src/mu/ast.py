@@ -1,4 +1,9 @@
 from dataclasses import dataclass
+from typing import Literal
+
+
+Solfa = Literal["1", "2", "3", "4", "5", "6", "7"]
+Alpha = Literal["C", "D", "E", "F", "G", "A", "B"]
 
 
 @dataclass
@@ -68,7 +73,7 @@ class Tied:
 
 @dataclass
 class SAO:
-    solfa: "str"
+    solfa: "Solfa"
     accid: "int | None"
     octav: "int"
 
@@ -78,15 +83,15 @@ Note = Rest | Tied | SAO
 
 @dataclass
 class AAO:
-    alpha: "str"
+    alpha: "Alpha"
     accid: "int | None"
     octav: "int"
 
 
 @dataclass
 class Mode:
-    lft: "SAO"
-    rgt: "AAO"
+    sao: "SAO"
+    aao: "AAO"
 
 
 @dataclass

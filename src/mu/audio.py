@@ -6,8 +6,7 @@ from typing import Callable, TextIO
 import numpy as np
 import pyaudio
 
-from .core import *
-from .tones import Tone
+from .tone import Tone
 from .piano import Piano
 
 
@@ -38,7 +37,8 @@ class AudioSettings:
     def gen_wave(self, tone: Tone) -> bytes:
         fw = np.linspace(0, tone.secs, int(self.sr * tone.secs))
         bw = np.linspace(tone.secs, 0, int(self.sr * tone.secs))
-        data = self.func(fw, 440 * 2 ** ((tone.pitch - 9) / 12)) * np.fmin(np.fmin(fw / self.attack, bw / self.decay), 1.0) * self.volume
+        freq = 440.0 * 2 ** (tone.pitch / 12) if tone.pitch is not None else 0.0
+        data = self.func(fw, freq) * np.fmin(np.fmin(fw / self.attack, bw / self.decay), 1.0) * self.volume
         return (np.int16(data * 32767) if self.sw == 2 else np.uint8(data * 127 + 128)).tobytes()
 
     def save(self, tones: list[Tone], output: str) -> None:
@@ -56,7 +56,7 @@ class AudioSettings:
             for tone in tones:
                 gui.show(tone.pitch)
                 stream.write(self.gen_wave(tone))
-                gui.show(-np.inf)
+                gui.show(None)
         stream.stop_stream()
         stream.close()
         pa.terminate()
