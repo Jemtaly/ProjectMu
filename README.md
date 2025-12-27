@@ -6,11 +6,41 @@ ProjectMu is a tool for generating audio files in .wav format from numbered musi
 
 ## 使用方法
 
-```cli
+```bash
 git clone https://github.com/Jemtaly/ProjectMu
-cd ProjectMu/src
+cd ProjectMu
+
+# 安装（推荐：可编辑安装，安装后会有 mu 命令）
+python -m pip install -e .
+
+# 你也可以安装可选依赖（播放功能）
+python -m pip install -e ".[play]"
+
+# 查看帮助
+mu -h
+```
+
+注意：在部分 Linux 环境下安装 `pyaudio` 可能需要系统层面的 PortAudio 开发库（具体以你的发行版/包管理器为准）。
+
+安装完成后，你可以直接使用 `mu` 命令：
+
+```bash
+mu -h
+```
+
+或者
+
+```bash
 python -m mu -h
 ```
+
+如果你不想安装（保持仓库原样运行），需要在 `src` 目录下执行：
+
+```bash
+cd src && python -m mu -h
+```
+
+输出:
 
 ```
 usage: python -m mu [-h] [-o OUTPUT] [-t {sn,pl,sq,tr,st}]
@@ -41,10 +71,16 @@ options:
                         volume of the output sound
 ```
 
-示例:
+你可以通过以下命令将简谱文件 `examples/Bad Apple!!.μ` 转换为音频文件 `Bad Apple!!.wav`：
 
+```bash
+mu -o 'Bad Apple!!.wav' -t sn 'examples/Bad Apple!!.μ'
 ```
-mu -o 'Bad Apple!!.wav' -t sine 'example/Bad Apple!!.nmn'
+
+如果安装了 `pyaudio`，你也可以直接播放音频：
+
+```bash
+mu -t sn 'examples/Bad Apple!!.μ'
 ```
 
 ## 简谱格式说明
