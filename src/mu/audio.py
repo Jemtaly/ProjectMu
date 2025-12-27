@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Callable, TextIO
 
 import numpy as np
-import pyaudio
 
 from .tone import Tone
 from .piano import Piano
@@ -50,7 +49,12 @@ class AudioSettings:
                 file.writeframes(self.gen_wave(tone))
 
     def play(self, tones: list[Tone], output: TextIO = sys.stdout):
-        pa = pyaudio.PyAudio()
+        try:
+            from pyaudio import PyAudio  # type: ignore
+        except ImportError:
+            print("pyaudio is not installed; cannot play audio.", file=sys.stderr)
+            return
+        pa = PyAudio()
         stream = pa.open(format=pa.get_format_from_width(self.sw), channels=1, rate=self.sr, output=True)
         with Piano(output) as gui:
             for tone in tones:
