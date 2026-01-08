@@ -6,7 +6,7 @@ from .audio import AudioSettings, FUNCS
 
 
 def main():
-    parser = argparse.ArgumentParser(description="ProjectMu - A Numbered Notation Score Compiler")
+    parser = argparse.ArgumentParser(description="ProjectMu - A Numbered Musical Notation Tool")
     parser.add_argument("filename", type=str, help="path to the input numbered notation score file")
     parser.add_argument("-o", "--output", type=str, default=None, help="output wav file path, if not specified, play the sound instead")
     parser.add_argument("-t", "--timbre", type=str, choices=FUNCS, default=next(iter(FUNCS)), help="timbre of the output sound")

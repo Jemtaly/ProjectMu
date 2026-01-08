@@ -28,7 +28,7 @@ ALPHA: dict[ast.Alpha, int] = {
 
 
 def flatten(music: ast.Music, output: TextIO = sys.stderr) -> list[Tone]:
-    unordered = {}
+    unordered: dict[int, list[Tone]] = {}
     i = 0
     for group in music.groups:
         sao = group.mod.sao
@@ -43,14 +43,14 @@ def flatten(music: ast.Music, output: TextIO = sys.stderr) -> list[Tone]:
         mtr = Fraction(mtn, mtd)
         for passage in group.passages:
             i += 1
-            curr = []
+            curr = unordered.setdefault(i, [])
             j = 0
             for measure in passage.measures:
                 j += 1
                 Accid: dict[ast.Solfa, int] = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0}
                 ctr = Fraction(0)
 
-                def visit(element: ast.Element, base=Fraction(1, 4)):
+                def visit(element: ast.Element, base: Fraction = Fraction(1, 4)):
                     nonlocal ctr
                     if isinstance(element, ast.TimedNote):
                         note = element.note
@@ -87,15 +87,17 @@ def flatten(music: ast.Music, output: TextIO = sys.stderr) -> list[Tone]:
                     visit(element)
                 if ctr != mtr:
                     output.write(f"Warning: Passage {i}, Measure {j} has wrong time signature, expected {mtr}, got {ctr}\n")
-            unordered[i] = curr
+
     if music.final is not None:
         nums = music.final
     else:
         nums = unordered.keys()
-    tones = []
+
+    tones: list[Tone] = []
     for num in nums:
         if num not in unordered:
             output.write(f"Warning: Passage {num} not found, skipping\n")
         else:
             tones.extend(unordered[num])
+
     return tones

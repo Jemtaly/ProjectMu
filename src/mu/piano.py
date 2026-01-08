@@ -8,7 +8,7 @@ blst = [None if i % 7 not in bdct else bdct[i % 7] + i // 7 * 12 for i in range(
 
 
 class Piano:
-    def __init__(self, output: TextIO, W=2, B=1, U=2, D=3, T=0, L=0):
+    def __init__(self, output: TextIO, W: int = 2, B: int = 1, U: int = 2, D: int = 3, T: int = 0, L: int = 0):
         self.args = W, B, U, D, T, L
         self.output = output
 
@@ -18,7 +18,7 @@ class Piano:
         self.output.flush()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.output.write("\033[?1049l")
         self.output.write("\033[?25h")
         self.output.flush()
