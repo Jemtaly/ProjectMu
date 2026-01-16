@@ -362,8 +362,8 @@ def parse_positive(buff: TextBuffer) -> int:
     parse_ws(buff)
     char = buff.peek(1)
     if char not in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
-        buff.move(1)
         raise ParserError(buff, "Expected a positive integer")
+    buff.move(1)
     num = char
     while True:
         char = buff.peek(1)
