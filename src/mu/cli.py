@@ -1,6 +1,6 @@
 import argparse
 
-from .parser import parse_music
+from .parser import TextBuffer, parse_music
 from .converter import flatten
 from .audio import AudioSettings, FUNCS
 
@@ -17,7 +17,7 @@ def main():
     parser.add_argument("-v", "--volume", type=float, default=0.8, help="volume of the output sound")
     args = parser.parse_args()
     with open(args.filename, "r") as file:
-        music = parse_music(file)
+        music = parse_music(TextBuffer(file.read()))
     tones = flatten(music)
     settings = AudioSettings(
         func=FUNCS[args.timbre],
