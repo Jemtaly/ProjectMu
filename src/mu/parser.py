@@ -40,6 +40,11 @@ class ParserError(Exception):
         return f"{self.message} at line {self.lineno} column {self.colno}"
 
 
+###################
+# Grammar parsers #
+###################
+
+
 def parse_music(buff: TextBuffer) -> ast.Music:
     groups = [parse_group(buff)]
     while True:
@@ -356,6 +361,11 @@ def parse_order(buff: TextBuffer) -> list[int]:
             buff.seek(told)
             break
     return nums
+
+
+#################
+# Token parsers #
+#################
 
 
 def parse_positive(buff: TextBuffer) -> int:
