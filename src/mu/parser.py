@@ -1,12 +1,27 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Iterable
 
 from . import ast
+
+
+@dataclass
+class ParserError(Exception):
+    lineno: int
+    colno: int
+    exp: Iterable[str]
+
+    def __str__(self) -> str:
+        exps = ", ".join(self.exp)
+        return f"Line {self.lineno}, Column {self.colno}: Expected one of: {exps}"
 
 
 @dataclass
 class TextBuffer:
     _text: str
     _curr: int = 0
+
+    _farthest_pos: int = 0
+    _farthest_exp: dict[str, None] = field(default_factory=lambda: {})
 
     def tell(self) -> int:
         return self._curr
@@ -22,22 +37,24 @@ class TextBuffer:
     def move(self, length: int) -> None:
         self._curr += length
 
-    def linecol(self) -> tuple[int, int]:
-        prev = self._text[: self._curr]
-        lines = prev.splitlines()
+    def linecol(self, pos: int) -> tuple[int, int]:
+        prev = self._text[:pos]
+        lines = prev.split("\n")
         line = lines.pop()
         lineno = len(lines) + 1
         colno = len(line) + 1
         return lineno, colno
 
+    def update_expected(self, exp: str) -> None:
+        if self._curr > self._farthest_pos:
+            self._farthest_pos = self._curr
+            self._farthest_exp.clear()
+        if self._curr == self._farthest_pos:
+            self._farthest_exp.setdefault(exp, None)
 
-class ParserError(Exception):
-    def __init__(self, buff: TextBuffer, message: str):
-        self.lineno, self.colno = buff.linecol()
-        self.message = message
-
-    def __str__(self):
-        return f"{self.message} at line {self.lineno} column {self.colno}"
+    def get_farthest_error(self) -> ParserError:
+        lineno, colno = self.linecol(self._farthest_pos)
+        return ParserError(lineno, colno, self._farthest_exp)
 
 
 ###################
@@ -122,7 +139,7 @@ def parse_element(buff: TextBuffer) -> ast.Element:
         return parse_rated(buff)
     except ParserError:
         buff.seek(told)
-    raise ParserError(buff, "Expected element")
+    raise buff.get_farthest_error()
 
 
 def parse_timed_note(buff: TextBuffer) -> ast.TimedNote:
@@ -195,7 +212,7 @@ def parse_note(buff: TextBuffer) -> ast.Note:
         return parse_tied(buff)
     except ParserError:
         buff.seek(told)
-    raise ParserError(buff, "Expected note")
+    raise buff.get_farthest_error()
 
 
 def parse_sao(buff: TextBuffer) -> ast.SAO:
@@ -347,7 +364,7 @@ def parse_final(buff: TextBuffer) -> list[int] | None:
         return parse_order(buff)
     except ParserError:
         buff.seek(told)
-    raise ParserError(buff, "Expected order")
+    raise buff.get_farthest_error()
 
 
 def parse_order(buff: TextBuffer) -> list[int]:
@@ -370,9 +387,10 @@ def parse_order(buff: TextBuffer) -> list[int]:
 
 def parse_positive(buff: TextBuffer) -> int:
     parse_ws(buff)
+    buff.update_expected("<positive integer>")
     char = buff.peek(1)
     if char not in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
-        raise ParserError(buff, "Expected a positive integer")
+        raise buff.get_farthest_error()
     buff.move(1)
     num = char
     while True:
@@ -386,40 +404,41 @@ def parse_positive(buff: TextBuffer) -> int:
 
 def parse_alpha(buff: TextBuffer) -> ast.Alpha:
     parse_ws(buff)
+    buff.update_expected("<A-G>")
     read = buff.peek(1)
     if read not in ("C", "D", "E", "F", "G", "A", "B"):
-        raise ParserError(buff, "Expected A-G")
+        raise buff.get_farthest_error()
     buff.move(1)
     return read
 
 
 def parse_solfa(buff: TextBuffer) -> ast.Solfa:
     parse_ws(buff)
+    buff.update_expected("<1-7>")
     read = buff.peek(1)
     if read not in ("1", "2", "3", "4", "5", "6", "7"):
-        raise ParserError(buff, "Expected 1-7")
+        raise buff.get_farthest_error()
     buff.move(1)
     return read
 
 
 def parse_ch(buff: TextBuffer, char: str) -> None:
     parse_ws(buff)
+    buff.update_expected(repr(char))
     read = buff.peek(1)
     if read != char:
-        raise ParserError(buff, f"Expected {char}")
+        raise buff.get_farthest_error()
     buff.move(1)
 
 
 def parse_eof(buff: TextBuffer) -> None:
     parse_ws(buff)
+    buff.update_expected("<EOF>")
     read = buff.peek()
     if read:
-        raise ParserError(buff, "Expected end of file")
+        raise buff.get_farthest_error()
 
 
 def parse_ws(buff: TextBuffer) -> None:
-    while True:
-        char = buff.peek(1)
-        if not char.isspace():
-            break
+    while buff.peek(1).isspace():
         buff.move(1)
