@@ -2,6 +2,7 @@ import sys
 import wave
 from dataclasses import dataclass
 from typing import Callable, TextIO
+from pathlib import Path
 
 import numpy as np
 
@@ -40,8 +41,8 @@ class AudioSettings:
         data = self.func(fw, freq) * np.fmin(np.fmin(fw / self.attack, bw / self.decay), 1.0) * self.volume
         return (np.int16(data * 32767) if self.sw == 2 else np.uint8(data * 127 + 128)).tobytes()
 
-    def save(self, tones: list[Tone], output: str) -> None:
-        with wave.open(output, "wb") as file:
+    def save(self, tones: list[Tone], output: Path) -> None:
+        with wave.open(output.as_posix(), "wb") as file:
             file.setnchannels(1)
             file.setsampwidth(self.sw)
             file.setframerate(self.sr)

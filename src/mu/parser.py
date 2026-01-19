@@ -1,60 +1,66 @@
 from dataclasses import dataclass, field
-from typing import Iterable
 
 from . import ast
 
 
+@dataclass(frozen=True)
+class TextSource:
+    name: str
+    text: str
+
+    def get_row_col(self, idx: int) -> tuple[int, int]:
+        row = self.text.count("\n", 0, idx)
+        col = idx - (self.text.rfind("\n", 0, idx) + 1)
+        return row, col
+
+
 @dataclass
 class ParserError(Exception):
-    lineno: int
-    colno: int
-    exp: Iterable[str]
+    _src: TextSource
+    _idx: int
+    _exp: dict[str, None]
 
     def __str__(self) -> str:
-        exps = ", ".join(self.exp)
-        return f"Line {self.lineno}, Column {self.colno}: Expected one of: {exps}"
+        row, col = self._src.get_row_col(self._idx)
+        expected = ", ".join(self._exp)
+        return f"at row {row + 1}, col {col + 1}: expected one of {{{expected}}}"
 
 
 @dataclass
 class TextBuffer:
-    _text: str
-    _curr: int = 0
+    _src: TextSource
+    _idx: int = 0
 
-    _farthest_pos: int = 0
+    _farthest_idx: int = 0
     _farthest_exp: dict[str, None] = field(default_factory=lambda: {})
 
     def tell(self) -> int:
-        return self._curr
+        return self._idx
 
-    def seek(self, pos: int) -> None:
-        self._curr = pos
+    def seek(self, idx: int) -> None:
+        self._idx = idx
 
     def peek(self, length: int | None = None) -> str:
         if length is None:
-            return self._text[self._curr :]
-        return self._text[self._curr : self._curr + length]
+            return self._src.text[self._idx :]
+        return self._src.text[self._idx : self._idx + length]
 
     def move(self, length: int) -> None:
-        self._curr += length
+        self._idx += length
 
-    def linecol(self, pos: int) -> tuple[int, int]:
-        prev = self._text[:pos]
-        lines = prev.split("\n")
-        line = lines.pop()
-        lineno = len(lines) + 1
-        colno = len(line) + 1
-        return lineno, colno
-
-    def update_expected(self, exp: str) -> None:
-        if self._curr > self._farthest_pos:
-            self._farthest_pos = self._curr
-            self._farthest_exp.clear()
-        if self._curr == self._farthest_pos:
+    def set_expected(self, exp: str) -> None:
+        if self._idx > self._farthest_idx:
+            self._farthest_idx = self._idx
+            self._farthest_exp = {}
+        if self._idx == self._farthest_idx:
             self._farthest_exp.setdefault(exp, None)
 
-    def get_farthest_error(self) -> ParserError:
-        lineno, colno = self.linecol(self._farthest_pos)
-        return ParserError(lineno, colno, self._farthest_exp)
+    def create_error(self) -> ParserError:
+        return ParserError(
+            _src=self._src,
+            _idx=self._farthest_idx,
+            _exp=self._farthest_exp,
+        )
 
 
 ###################
@@ -139,7 +145,7 @@ def parse_element(buff: TextBuffer) -> ast.Element:
         return parse_rated(buff)
     except ParserError:
         buff.seek(told)
-    raise buff.get_farthest_error()
+    raise buff.create_error()
 
 
 def parse_timed_note(buff: TextBuffer) -> ast.TimedNote:
@@ -212,7 +218,7 @@ def parse_note(buff: TextBuffer) -> ast.Note:
         return parse_tied(buff)
     except ParserError:
         buff.seek(told)
-    raise buff.get_farthest_error()
+    raise buff.create_error()
 
 
 def parse_sao(buff: TextBuffer) -> ast.SAO:
@@ -364,7 +370,7 @@ def parse_final(buff: TextBuffer) -> list[int] | None:
         return parse_order(buff)
     except ParserError:
         buff.seek(told)
-    raise buff.get_farthest_error()
+    raise buff.create_error()
 
 
 def parse_order(buff: TextBuffer) -> list[int]:
@@ -387,10 +393,10 @@ def parse_order(buff: TextBuffer) -> list[int]:
 
 def parse_positive(buff: TextBuffer) -> int:
     parse_ws(buff)
-    buff.update_expected("<positive integer>")
+    buff.set_expected("<positive integer>")
     char = buff.peek(1)
     if char not in ("1", "2", "3", "4", "5", "6", "7", "8", "9"):
-        raise buff.get_farthest_error()
+        raise buff.create_error()
     buff.move(1)
     num = char
     while True:
@@ -404,39 +410,39 @@ def parse_positive(buff: TextBuffer) -> int:
 
 def parse_alpha(buff: TextBuffer) -> ast.Alpha:
     parse_ws(buff)
-    buff.update_expected("<A-G>")
+    buff.set_expected("<A-G>")
     read = buff.peek(1)
     if read not in ("C", "D", "E", "F", "G", "A", "B"):
-        raise buff.get_farthest_error()
+        raise buff.create_error()
     buff.move(1)
     return read
 
 
 def parse_solfa(buff: TextBuffer) -> ast.Solfa:
     parse_ws(buff)
-    buff.update_expected("<1-7>")
+    buff.set_expected("<1-7>")
     read = buff.peek(1)
     if read not in ("1", "2", "3", "4", "5", "6", "7"):
-        raise buff.get_farthest_error()
+        raise buff.create_error()
     buff.move(1)
     return read
 
 
 def parse_ch(buff: TextBuffer, char: str) -> None:
     parse_ws(buff)
-    buff.update_expected(repr(char))
+    buff.set_expected(repr(char))
     read = buff.peek(1)
     if read != char:
-        raise buff.get_farthest_error()
+        raise buff.create_error()
     buff.move(1)
 
 
 def parse_eof(buff: TextBuffer) -> None:
     parse_ws(buff)
-    buff.update_expected("<EOF>")
+    buff.set_expected("<EOF>")
     read = buff.peek()
     if read:
-        raise buff.get_farthest_error()
+        raise buff.create_error()
 
 
 def parse_ws(buff: TextBuffer) -> None:
