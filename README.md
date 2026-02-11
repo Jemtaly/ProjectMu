@@ -4,49 +4,55 @@ ProjectMu 是一个用于通过简谱生成 .wav 格式音频文件的工具。
 
 ProjectMu is a tool for generating audio files in .wav format from numbered musical notations.
 
-## 使用方法
+## 安装和使用
+
+克隆当前仓库：
 
 ```bash
 git clone https://github.com/Jemtaly/ProjectMu
 cd ProjectMu
+```
 
-# 安装（推荐：可编辑安装，安装后会有 mu 命令）
-python -m pip install -e .
+使用 `pip` 安装：
 
-# 你也可以安装可选依赖（播放功能）
-python -m pip install -e ".[play]"
+```bash
+python -m pip install .
+```
 
-# 查看帮助
-mu -h
+如果你想要启用音频播放功能（需要额外安装 `pyaudio`），可以使用以下命令安装：
+
+```bash
+python -m pip install ".[play]"
+```
+
+或者使用 `pipx` 安装（推荐）：
+
+```bash
+pipx install .          # 基本安装
+pipx install ".[play]"  # 启用音频播放功能
 ```
 
 注意：在部分 Linux 环境下安装 `pyaudio` 可能需要系统层面的 PortAudio 开发库（具体以你的发行版/包管理器为准）。
 
-安装完成后，你可以直接使用 `mu` 命令：
+安装完成后，你可以直接使用 `mu` 命令查看帮助信息：
 
 ```bash
 mu -h
 ```
 
-或者
+如果是通过 `pip` 安装，也可以使用以下方式：
 
 ```bash
 python -m mu -h
 ```
 
-如果你不想安装（保持仓库原样运行），需要在 `src` 目录下执行：
-
-```bash
-cd src && python -m mu -h
-```
-
 输出:
 
 ```
-usage: python -m mu [-h] [-o OUTPUT] [-t {sn,pl,sq,tr,st}]
-                    [-r SAMPLE_RATE] [-w {1,2}] [-a ATTACK] [-d DECAY]
-                    [-v VOLUME]
-                    filename
+usage: mu [-h] [-o OUTPUT] [-t {sn,pl,sq,tr,st}]
+          [-r SAMPLE_RATE] [-w {1,2}] [-a ATTACK] [-d DECAY]
+          [-v VOLUME]
+          filename
 
 ProjectMu - A Numbered Notation Score Compiler
 
@@ -83,13 +89,13 @@ mu -o 'Bad Apple!!.wav' -t sn 'examples/Bad Apple!!.μ'
 mu -t sn 'examples/Bad Apple!!.μ'
 ```
 
-## 简谱格式说明
+## 简谱语法
 
 ### 示例
 
-+ Amazing Grace
+**Amazing Grace**
 
-```
+```mu
 1=G 3/4 88
 0 0 <5,1> |
 1 - [3]<321> | 3 - <32> | 1 - 6, |
@@ -98,9 +104,9 @@ mu -t sn 'examples/Bad Apple!!.μ'
 5, - <5,1> | 1 - [3]<321> | 3 - 2 | 1 - - | - - ||
 ```
 
-+ Bad Apple!! - nomico
+**Bad Apple!! - nomico**
 
-```
+```mu
 1=F# 4/4 137
 6,, <<06,,5,,6,,>> 6,, <<06,,5,,6,,>> | 6,, <<06,,5,,6,,>> <6,,<6,,1,>> <2,<1,2,>> |
 6,, <<06,,5,,6,,>> 6,, <<06,,5,,6,,>> | 6,, <<06,,5,,6,,>> <2,<1,2,>> <1,<6,,1,>> |,
@@ -129,7 +135,7 @@ G 4/4 137
 1 1 2 2 3 4 3 5 1 1 2 2 3 6
 ```
 
-### 段落格式
+### 段落语法
 
 | 符号 | 说明 |
 | --- | --- |
@@ -142,7 +148,7 @@ G 4/4 137
 | `\|\|` | 用于表示乐谱结束。 |
 | `\|:` | 当乐谱中存在反复记号（各段的演奏顺序需要手动排列）时，用此符号表示乐谱结束。并在后面输入乐谱各段在整首乐曲中的排列顺序。 |
 
-### 音符格式
+### 音符语法
 
 | 符号 | 说明 |
 | --- | --- |
